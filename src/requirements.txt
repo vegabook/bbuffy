@@ -1,0 +1,9 @@
+colorama
+cryptography
+msgpack
+websockets
+sockauth
+python-jose
+ipython
+#blpapi # needs bloomberg url
+
