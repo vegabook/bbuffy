@@ -35,6 +35,9 @@ Supports:
 Rest is not typed, Rest doesn't do streaming, BLPAPI's "correlationID" concept used in the Bloomberg API maps naturally to function calls. 
 #### Why not Websockets?
 Websockets are asynchronous and are not a natural fit for request <-> response patterns, and do not map well to the "correlationID" concepts used in the Bloomberg API.
+#### Can I use this if I don't have a Bloomberg terminal?
+[no](https://stackoverflow.com/a/74503768/122792)
+
 
 
 ## Dependencies
