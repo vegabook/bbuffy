@@ -7,7 +7,7 @@
   };
 
   nixConfig = {
-    bash-prompt-prefix = "🧪 geerpc";
+    bash-prompt-prefix = "🍠 gBLP";
   };
 
   # Flake outputs
@@ -32,32 +32,16 @@
         default = pkgs.mkShell {
           # The Nix packages provided in the environment
           packages = with pkgs; [
-            beam.packages.erlang_27.elixir_1_17
-            erlang_27
-            rebar3
-            python312
-            python312Packages.grpcio
-            python312Packages.grpcio-tools
-            python312Packages.ipython
+            python311
+            python311Packages.grpcio
+            python311Packages.grpcio-tools
+            python311Packages.ipython
             grpc-tools
             certstrap
           ];
 
           shellHook = ''
-            # allows mix to work on the local directory
-            mkdir -p .nix-mix
-            mkdir -p .nix-hex
-            export MIX_HOME=$PWD/.nix-mix
-            export HEX_HOME=$PWD/.nix-hex
-            export ERL_LIBS=$HEX_HOME/lib/erlang/lib
-
-            # concats PATH
-            export PATH=$MIX_HOME/bin:$PATH
-            export PATH=$MIX_HOME/escripts:$PATH
-            export PATH=$HEX_HOME/bin:$PATH
-
-            # enables history for IEx
-            export ERL_AFLAGS="-kernel shell_history enabled -kernel shell_history_path '\"$PWD/.erlang-history\"'"
+            echo "Python 3.11 development environment"
           '';
         };
       });
