@@ -4,6 +4,8 @@
 ![background](images/finvids.gif#gh-light-mode-only)
 
 gRPC for the Bloomberg API V3
+![background](images/finvidss.gif#gh-dark-mode-only)
+![background](images/finvidss.gif#gh-light-mode-only)
 
 ## About
 _This is a work in progress_
