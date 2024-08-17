@@ -1,9 +1,11 @@
 # gBLP
 
-gRPC for the Bloomberg API V3
-
 ![background](images/finvids.gif#gh-dark-mode-only)
 ![background](images/finvids.gif#gh-light-mode-only)
+
+---
+
+gRPC for the Bloomberg API V3
 
 ## Status
 _This is an alpha work in progress_
