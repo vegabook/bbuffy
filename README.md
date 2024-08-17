@@ -1,4 +1,4 @@
-# gBLP
+# gBLP - Bloomberg V3 API gRPC Server
 
 ![background](images/finvids.gif#gh-dark-mode-only)
 ![background](images/finvids.gif#gh-light-mode-only)
