@@ -6,11 +6,11 @@
 gRPC for the Bloomberg API V3
 
 $${\color{red}LEGAL NOTICE
-\color{orange}
-This \space software \space is \space provided \space "as \space is," \space without \space warranty \space of \space any \space kind, \space express \space or \space implied. \space 
-The \space developer \space of \space this \space software \space assumes \space no \space responsibility \space or \space liability \space for \space any \space use \space of \space the \space software \space by \space any \space party. \space 
-It \space is \space the \space sole \space responsibility \space of \space the \space user \space to \space ensure \space that \space their \space use \space of \space this \space software \space complies \space with \space all \space applicable \space laws, \space regulations, \space and \space the \space terms \space and \space conditions \space of \space the \space Bloomberg \space API. \space 
-By \space using \space this \space software, \space you \space acknowledge \space and \space agree \space that \space the \space developer \space shall \space not \space be \space held \space liable \space for \space any \space consequences \space arising \space from \space the \space use \space of \space this \space software, \space including \space but \space not \space limited \space to, \space any \space violations \space of \space the \space Bloomberg \space API \space terms.}
+\color{orange} \newline
+This \space software \space is \space provided \space "as \space is," \space without \space warranty \space of \space any \space kind, \space\newline express \space or \space implied. \space 
+The \space developer \space of \space this \space software \space assumes \space no \space responsibility \space or \space liability \space\newline for \space any \space use \space of \space the \space software \space by \space any \space party. \space 
+It \space is \space the \space sole \space responsibility \space of \space the \space user \space to \space ensure \space that \space their \space\newline use \space of \space this \space software \space complies \space with \space all \space applicable \space laws, \space regulations, \space and \space the \space terms \space and \space conditions \space of \space the \space Bloomberg \space API. \space 
+By \space using \space this \space software, \space you \space acknowledge \space and \space agree \space that \space the \space developer \space\newline shall \space not \space be \space held \space liable \space for \space any \space consequences \space arising \space from \space the \space use \space of \space this \space software, \space including \space but \space not \space limited \space to, \space any \space violations \space of \space the \space Bloomberg \space API \space terms.}
 $$
 
 
