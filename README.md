@@ -12,7 +12,12 @@ $$\textcolor{JungleGreen}{\rule{120cm}{0.5mm}}$$
 
 
 ## Description
-gRPC for the Bloomberg API V3
+Bloomberg provides native APIs for Python, Java, and C++. This project aims to provide a gRPC server that can be used by any gRPC-capable programming language to access the Bloomberg V3 API.
+Supports:
+* Historica APIs (`//refdata`).
+* Streaming APIs (`//mktdata`). Subscribe to data, Excel-style, with push updates.  
+* Full control over session options. 
+* Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
 
 ## Status
 _This is an alpha work in progress_
@@ -22,13 +27,6 @@ _todo_
 `pip install gBLP` or
 `nix develop`
 
-## Aims 
-To allow users of any gRPC-capable programming language to use the Bloomberg V3 API. 
-Supports:
-* Historica APIs (`//refdata`).
-* Streaming APIs (`//subdata`).
-* Full control over session options. 
-* Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
 
 ## FAQ
 #### Why not REST?
