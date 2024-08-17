@@ -50,7 +50,8 @@ _todo_
 
 ## Licence
 GNU AGPL
-Please also see [the licence for the blpapi](https://github.com/vegabook/gBLP/blob/main/src/bbg_copyright.txt)
+
+Please also see the [licence](https://github.com/vegabook/gBLP/blob/main/src/bbg_copyright.txt) for the Bloomberg API code contained in this package. 
 
  
 
