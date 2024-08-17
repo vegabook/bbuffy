@@ -32,9 +32,10 @@ Supports:
 
 ## FAQ
 #### Why not REST?
-Rest is not typed, Rest doesn't do streaming, BLPAPI's "correlationID" concept maps easily to function calls. 
-#### Is this legal?
-For Terminal users: yes long as you use both gRPC server (this software), and client, on the same machine. 
+Rest is not typed, Rest doesn't do streaming, BLPAPI's "correlationID" concept used in the Bloomberg API maps naturally to function calls. 
+#### Why not Websockets?
+Websockets are asynchronous and are not a natural fit for request <-> response patterns, and do not map well to the "correlationID" concepts used in the Bloomberg API.
+
 
 ## Dependencies
 This is the server component of the gRPC client <-> server pairing. It is a python package and depends on Python 3.10+
