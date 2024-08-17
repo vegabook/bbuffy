@@ -47,5 +47,10 @@ _todo_
 * Roll your own
     * Use the proto files with the protocul buffers compile `protoc` (see [here](https://grpc.io/docs/protoc-installation/)) to generate function stubs for your programming language.
     * Note that you will likely have to install a `protoc` plugin. Here fore example is the [plugin for Elixir](https://github.com/brexhq/protobuf-elixir). Here is Elixir's [gRPC library](https://github.com/elixir-grpc/grpc)
+
+## Licence
+GNU AGPL
+Please also see [the licence for the blpapi](https://github.com/vegabook/gBLP/blob/main/src/bbg_copyright.txt)
+
  
 
