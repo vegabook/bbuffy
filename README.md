@@ -5,16 +5,8 @@
 
 gRPC for the Bloomberg API V3
 
-$${\color{red}
-LEGAL \space NOTICE}$$
+$${\color{red}\rule{\linewidth}{0.4mm}}$$
 
-$${\noindent\textcolor{red}{\rule{\linewidth}{0.4mm}}
-
-% Vertical space between lines (optional)
-\vspace{1mm}
-
-% Second red line
-\noindent\textcolor{red}{\rule{\linewidth}{0.4mm}}}$$
 
 This software is provided "as is," without warranty of any kind, express or implied. The developer of this software assumes no responsibility or liability for any use of the software by any party. It is the sole responsibility of the user to ensure that their use of this software complies with all applicable laws, regulations, and the terms and conditions of the Bloomberg API. By using this software, you acknowledge and agree that the developer shall not be held liable for any consequences arising from the use of this software, including but not limited to, any violations of the Bloomberg API terms.
 
