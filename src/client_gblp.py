@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The Python AsyncIO implementation of the GRPC hellostreamingworld.MultiGreeter client."""
 
 import asyncio
 import logging
@@ -25,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
 parser.add_argument('--host', default='localhost')
 parser.add_argument('--port', default='50051')
-from Pathlib import Path
+from pathlib import Path
 
 args = parser.parse_args()
 
@@ -43,11 +42,11 @@ async def run() -> None:
     hostport = f"{args.host}:{args.port}"
 
     async with grpc.aio.secure_channel(hostport, credentials) as channel:
-        stub = hellostreamingworld_pb2_grpc.MultiGreeterStub(channel)
+        stub = gBLP_pb2_grpc.MultiGreeterStub(channel)
 
         # Read from an async generator
         async for response in stub.sayHello(
-            hellostreamingworld_pb2.HelloRequest(name=args.message)
+            gBLP_pb2.HelloRequest(name=args.message)
         ):
             print(
                 "Greeter client received from async generator: "
@@ -56,7 +55,7 @@ async def run() -> None:
 
         # Direct read from the stub
         hello_stream = stub.sayHello(
-            hellostreamingworld_pb2.HelloRequest(name=str(args.message))
+            gBLP_pb2.HelloRequest(name=str(args.message))
         )
         while True:
             response = await hello_stream.read()
