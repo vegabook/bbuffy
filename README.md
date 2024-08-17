@@ -1,4 +1,8 @@
 # gBLP
+
+![background](images/finvid.mp4#gh-dark-mode-only)
+![background](images/finvid.mp4#gh-light-mode-only)
+
 gRPC for the Bloomberg API V3
 
 ## About
