@@ -23,7 +23,7 @@ _todo_
 `nix develop`
 
 ## Aims 
-To allow users of any gRPC programming language to use the Bloomberg V3 API. 
+To allow users of any gRPC-capable programming language to use the Bloomberg V3 API. 
 Supports:
 * Historica APIs (`//refdata`).
 * Streaming APIs (`//subdata`).
@@ -37,7 +37,7 @@ Rest is not typed, Rest doesn't do streaming, BLPAPI's "correlationID" concept m
 For Terminal users: yes long as you use both gRPC server (this software), and client, on the same machine. 
 
 ## Dependencies
-This is a python package and depends on Python 3.10+
+This is the server component of the gRPC client <-> server pairing. It is a python package and depends on Python 3.10+
 
 ## Clients
 _todo_
