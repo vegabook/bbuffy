@@ -30,11 +30,13 @@ _todo_
 
 ## FAQ
 #### Why not REST?
-Rest is not typed, Rest doesn't do streaming, BLPAPI's "correlationID" concept used in the Bloomberg API maps naturally to function calls. 
+The Bloomberg API uses the concept of "correlationIDs" to link requests with responses, which map to gRPC function calls more easily. Also REST doesn't do streaming. 
 #### Why not Websockets?
 Websockets are asynchronous and are not a natural fit for request <-> response patterns, and do not map well to the "correlationID" concepts used in the Bloomberg API.
 #### Can I use this if I don't have a Bloomberg terminal?
 [No](https://stackoverflow.com/a/74503768/122792).
+#### Why not use FFI to C++
+The Bloomberg API is Windows only for Bloomberg Terminal users. With gBLP you can gRPC from the WSL installation on your machine. 
 
 
 
