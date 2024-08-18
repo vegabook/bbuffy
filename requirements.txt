@@ -5,5 +5,8 @@ websockets
 sockauth
 python-jose
 ipython
+grpcio
+grpcio-tools
+
 #blpapi # needs bloomberg url
 
