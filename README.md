@@ -14,8 +14,8 @@ $$\textcolor{JungleGreen}{\rule{120cm}{0.5mm}}$$
 ## Description
 Bloomberg provides native APIs for Python, Java, C#, and C++. This project aims to provide a Python-based gRPC server that can be used by any gRPC-capable programming language to access the Bloomberg V3 API. 
 Supports:
-* Historica APIs (`//refdata`).
-* Streaming APIs (`//mktdata`). Subscribe to data, Excel-style, with push updates.  
+* Historica APIs (`//refdata`) for ticks, bars, and daily closes. 
+* Streaming APIs (`//mktdata`, `//mktbar` services). Subscribe to data, Excel-style, with push updates.  
 * Full control over session options. 
 * Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
 
