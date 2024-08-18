@@ -32,16 +32,23 @@ _todo_
 
 ## FAQ
 * Why not REST?
-    * The Bloomberg API uses the concept of "correlationIDs" to link requests with responses, which map to gRPC function calls more easily. 
+    * The Bloomberg API uses the concept of "correlationIDs" to link requests with responses, which are a natural fit for gRPC function calls. 
     * REST doesn't do streaming. 
-    * gRPC will marshall types for you across languages. 
+    * gRPC will marshall types across languages. 
+    * Automatic binary serialization and deserialization. 
+    * Faster.
 * Why not Websockets?
-    * Websockets are asynchronous and are not a natural fit for request <-> response patterns. 
-    * gRPC typing. 
+    * Websockets are not a natural fit for request <-> response patterns. 
+    * Avoids having to write a custom protocol.
+    * Types, serialization as per REST.
 * Can I use this if I don't have a Bloomberg terminal?
-    * [No](https://stackoverflow.com/a/74503768/122792).
+    * [No](https://stackoverflow.com/a/74503768/122792), unless you have a subscription to Bloomberg's Bpipe product. 
 * Why not use FFI to C++
     * FFI with C++ is a pain in many languages, and would be Windows only. Now you can WSL. 
+* I don't like Windows / WSL.
+    * Bloomberg Terminal is Windows only, and does not permit data to be moved off the Windows instance it is running on.
+    * Bloomberg has a number of (expensive) products which will allow data to move -- consult your Bloomberg representative about this. 
+ 
 
 
 ## Dependencies
