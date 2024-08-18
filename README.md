@@ -19,8 +19,10 @@ Supports:
 * Full control over session options. 
 * Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
 
+
 ## Status
 _This is an alpha work in progress_
+
 
 ## Installation
 _todo_
@@ -32,13 +34,14 @@ _todo_
 * Why not REST?
     * The Bloomberg API uses the concept of "correlationIDs" to link requests with responses, which map to gRPC function calls more easily. 
     * REST doesn't do streaming. 
+    * gRPC will marshall types for you across languages. 
 * Why not Websockets?
     * Websockets are asynchronous and are not a natural fit for request <-> response patterns. 
+    * gRPC typing. 
 * Can I use this if I don't have a Bloomberg terminal?
     * [No](https://stackoverflow.com/a/74503768/122792).
 * Why not use FFI to C++
-    * The Bloomberg API is Windows only for Bloomberg Terminal users. With gBLP you can gRPC from the WSL installation on your machine. 
-
+    * FFI with C++ is a pain in many languages, and would be Windows only. Now you can WSL. 
 
 
 ## Dependencies
