@@ -33,7 +33,6 @@ message SessionOptions {
   string name = 1;
   int32 interval = 2; // subscription interval in seconds
   int32 maxEventQueueSize = 3; // event queue size
-  string topicPrefix = 4; // topic prefix for example '/ticker/'
 }
 
 message Session {

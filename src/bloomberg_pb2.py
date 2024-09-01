@@ -16,7 +16,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x62loomberg.proto\x12\tbloomberg\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"`\n\x0eSessionOptions\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08interval\x18\x02 \x01(\x05\x12\x19\n\x11maxEventQueueSize\x18\x03 \x01(\x05\x12\x13\n\x0btopicPrefix\x18\x04 \x01(\t\"\xae\x01\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08services\x18\x02 \x03(\t\x12=\n\x10subscriptionList\x18\x03 \x01(\x0b\x32#.bloomberg.Session.SubscriptionList\x1a\x44\n\x10SubscriptionList\x12\x0e\n\x06topics\x18\x01 \x03(\t\x12\x0e\n\x06\x66ields\x18\x02 \x03(\t\x12\x10\n\x08interval\x18\x03 \x01(\x05\"\xfb\x01\n\x15HistoricalDataRequest\x12\x0e\n\x06topics\x18\x01 \x01(\t\x12\x0e\n\x06\x66ields\x18\x02 \x01(\t\x12)\n\x05start\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x03\x65nd\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12>\n\x07options\x18\x05 \x03(\x0b\x32-.bloomberg.HistoricalDataRequest.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"R\n\x16HistoricalDataResponse\x12\x0c\n\x04name\x18\x01 \x01(\t\x12*\n\tjson_data\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"3\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rnum_greetings\x18\x02 \x01(\t\"\x1d\n\nHelloReply\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\nSumRequest\x12\x0c\n\x04num1\x18\x01 \x01(\x05\x12\x0c\n\x04num2\x18\x02 \x01(\x05\"\x1d\n\x0bSumResponse\x12\x0e\n\x06result\x18\x01 \x01(\x05\x32\x8b\x04\n\x0eSessionManager\x12>\n\x08sayHello\x12\x17.bloomberg.HelloRequest\x1a\x15.bloomberg.HelloReply\"\x00\x30\x01\x12\x36\n\x03sum\x12\x15.bloomberg.SumRequest\x1a\x16.bloomberg.SumResponse\"\x00\x12>\n\x0bopenSession\x12\x19.bloomberg.SessionOptions\x1a\x12.bloomberg.Session\"\x00\x12\x35\n\tsubscribe\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x37\n\x0bsessionInfo\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x37\n\x0bunsubscribe\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x38\n\x0c\x63loseSession\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12^\n\x15historicalDataRequest\x12 .bloomberg.HistoricalDataRequest\x1a!.bloomberg.HistoricalDataResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x62loomberg.proto\x12\tbloomberg\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\"K\n\x0eSessionOptions\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08interval\x18\x02 \x01(\x05\x12\x19\n\x11maxEventQueueSize\x18\x03 \x01(\x05\"\xae\x01\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08services\x18\x02 \x03(\t\x12=\n\x10subscriptionList\x18\x03 \x01(\x0b\x32#.bloomberg.Session.SubscriptionList\x1a\x44\n\x10SubscriptionList\x12\x0e\n\x06topics\x18\x01 \x03(\t\x12\x0e\n\x06\x66ields\x18\x02 \x03(\t\x12\x10\n\x08interval\x18\x03 \x01(\x05\"\xfb\x01\n\x15HistoricalDataRequest\x12\x0e\n\x06topics\x18\x01 \x01(\t\x12\x0e\n\x06\x66ields\x18\x02 \x01(\t\x12)\n\x05start\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x03\x65nd\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12>\n\x07options\x18\x05 \x03(\x0b\x32-.bloomberg.HistoricalDataRequest.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"R\n\x16HistoricalDataResponse\x12\x0c\n\x04name\x18\x01 \x01(\t\x12*\n\tjson_data\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"3\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rnum_greetings\x18\x02 \x01(\t\"\x1d\n\nHelloReply\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\nSumRequest\x12\x0c\n\x04num1\x18\x01 \x01(\x05\x12\x0c\n\x04num2\x18\x02 \x01(\x05\"\x1d\n\x0bSumResponse\x12\x0e\n\x06result\x18\x01 \x01(\x05\x32\x8b\x04\n\x0eSessionManager\x12>\n\x08sayHello\x12\x17.bloomberg.HelloRequest\x1a\x15.bloomberg.HelloReply\"\x00\x30\x01\x12\x36\n\x03sum\x12\x15.bloomberg.SumRequest\x1a\x16.bloomberg.SumResponse\"\x00\x12>\n\x0bopenSession\x12\x19.bloomberg.SessionOptions\x1a\x12.bloomberg.Session\"\x00\x12\x35\n\tsubscribe\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x37\n\x0bsessionInfo\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x37\n\x0bunsubscribe\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x38\n\x0c\x63loseSession\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12^\n\x15historicalDataRequest\x12 .bloomberg.HistoricalDataRequest\x1a!.bloomberg.HistoricalDataResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -26,25 +26,25 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._loaded_options = None
   _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_options = b'8\001'
   _globals['_SESSIONOPTIONS']._serialized_start=93
-  _globals['_SESSIONOPTIONS']._serialized_end=189
-  _globals['_SESSION']._serialized_start=192
-  _globals['_SESSION']._serialized_end=366
-  _globals['_SESSION_SUBSCRIPTIONLIST']._serialized_start=298
-  _globals['_SESSION_SUBSCRIPTIONLIST']._serialized_end=366
-  _globals['_HISTORICALDATAREQUEST']._serialized_start=369
-  _globals['_HISTORICALDATAREQUEST']._serialized_end=620
-  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_start=574
-  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_end=620
-  _globals['_HISTORICALDATARESPONSE']._serialized_start=622
-  _globals['_HISTORICALDATARESPONSE']._serialized_end=704
-  _globals['_HELLOREQUEST']._serialized_start=706
-  _globals['_HELLOREQUEST']._serialized_end=757
-  _globals['_HELLOREPLY']._serialized_start=759
-  _globals['_HELLOREPLY']._serialized_end=788
-  _globals['_SUMREQUEST']._serialized_start=790
-  _globals['_SUMREQUEST']._serialized_end=830
-  _globals['_SUMRESPONSE']._serialized_start=832
-  _globals['_SUMRESPONSE']._serialized_end=861
-  _globals['_SESSIONMANAGER']._serialized_start=864
-  _globals['_SESSIONMANAGER']._serialized_end=1387
+  _globals['_SESSIONOPTIONS']._serialized_end=168
+  _globals['_SESSION']._serialized_start=171
+  _globals['_SESSION']._serialized_end=345
+  _globals['_SESSION_SUBSCRIPTIONLIST']._serialized_start=277
+  _globals['_SESSION_SUBSCRIPTIONLIST']._serialized_end=345
+  _globals['_HISTORICALDATAREQUEST']._serialized_start=348
+  _globals['_HISTORICALDATAREQUEST']._serialized_end=599
+  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_start=553
+  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_end=599
+  _globals['_HISTORICALDATARESPONSE']._serialized_start=601
+  _globals['_HISTORICALDATARESPONSE']._serialized_end=683
+  _globals['_HELLOREQUEST']._serialized_start=685
+  _globals['_HELLOREQUEST']._serialized_end=736
+  _globals['_HELLOREPLY']._serialized_start=738
+  _globals['_HELLOREPLY']._serialized_end=767
+  _globals['_SUMREQUEST']._serialized_start=769
+  _globals['_SUMREQUEST']._serialized_end=809
+  _globals['_SUMRESPONSE']._serialized_start=811
+  _globals['_SUMRESPONSE']._serialized_end=840
+  _globals['_SESSIONMANAGER']._serialized_start=843
+  _globals['_SESSIONMANAGER']._serialized_end=1366
 # @@protoc_insertion_point(module_scope)

@@ -1,5 +1,6 @@
-# Copyright 2021 gRPC authors.
 # colorscheme iceberg dark
+
+# Copyright 2021 gRPC authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@ import bloomberg_pb2_grpc
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
-parser.add_argument('--host', default='localhost')
+parser.add_argument('--host', default='signaliser.com')
 parser.add_argument('--port', default='50051')
 from pathlib import Path
 
