@@ -27,6 +27,7 @@ parser.add_argument('--message', default='hello!')
 parser.add_argument('--host', default='signaliser.com')
 parser.add_argument('--port', default='50051')
 from pathlib import Path
+import time
 
 args = parser.parse_args()
 
@@ -66,6 +67,16 @@ async def run() -> None:
             print(
                 "Greeter client received from direct read: " + response.message
             )
+
+        sessionOptions = bloomberg_pb2.SessionOptions(
+            name="session1", interval=1, maxEventQueueSize=100000
+        )
+        print(f"Opening session: {sessionOptions}")
+        session = await stub.openSession(sessionOptions)
+        print(f"Opened session: {session}")
+        time.sleep(5)
+        closedSession = await stub.closeSession(session)
+        print(f"Closed session: {closedSession}")
 
 
 if __name__ == "__main__":

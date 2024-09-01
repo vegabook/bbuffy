@@ -44,6 +44,7 @@ message Session {
   string name = 1;
   repeated string services = 2;
   SubscriptionList subscriptionList = 3;
+  bool alive = 4;
 }
 
 message HistoricalDataRequest {

@@ -24,6 +24,9 @@ from bloomberg_pb2 import HelloReply
 from bloomberg_pb2 import HelloRequest
 from bloomberg_pb2 import SumRequest
 from bloomberg_pb2 import SumResponse 
+from bloomberg_pb2 import Session
+from bloomberg_pb2 import SessionOptions
+
 from bloomberg_pb2_grpc import SessionManagerServicer
 from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server
 from argparse import ArgumentParser, RawTextHelpFormatter
@@ -36,10 +39,21 @@ from util.ConnectionAndAuthOptions import \
     addConnectionAndAuthOptions, \
     createSessionOptions
 
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 NUMBER_OF_REPLY = 10
 CERT_LOCATION_RELATIVE = '../certs/out/'
 
+RESP_INFO = "info"
+RESP_REF = "refdata"
+RESP_SUB = "subdata"
+RESP_BAR = "bardata"
+RESP_STATUS = "status"
+RESP_ERROR = "error"
+RESP_ACK = "ack"
 
 # ----------------- parse the command line and session options ---------------
 
@@ -68,14 +82,6 @@ def parseCmdLine():
 
 globalOptions = parseCmdLine()
 
-class SessionOptions:
-    def __init__(self, 
-                 name: str, 
-                 interval: int,
-                 maxEventQueueSize: int):
-        self.name = name
-        self.interval = 0
-        self.maxEventQueueSize = 0
 
 # -------------------- session and event handlers ----------------------
 
@@ -93,7 +99,7 @@ class EventHandler(object):
             logger.info((f"Received response to request {msg.getRequestId()} "
                         f"partial {partial}"))
             sendmsg = (RESP_REF, {"cid": cid, "partial": partial, "data": msg.toPy()})
-            dataq.put(sendmsg)
+            logger.info(f"Sending response {sendmsg}")
 
     def processSubscriptionStatus(self, event):
         timeStamp = self.getTimeStamp()
@@ -119,8 +125,8 @@ class EventHandler(object):
                     sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
                 case _:
                     sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
+            logger.info(f"Sending response {sendmsg}")
 
-            dataq.put(sendmsg)
 
     def searchMsg(self, msg, fields):
         return [{"field": field, "value": msg[field]} 
@@ -159,7 +165,7 @@ class EventHandler(object):
                            blpapi.Name("MarketBarIntervalEnd")):
                 sendmsg = (RESP_BAR, self.makeBarMessage(msg, str(msgtype), 
                                                           topic, interval = 1))
-                dataq.put(sendmsg)
+                logger.info(f"Sending response {sendmsg}")
 
             # subscription --->
             elif msgtype == blpapi.Name("MarketDataEvents"):
@@ -168,7 +174,7 @@ class EventHandler(object):
                        {"timestamp": timestampdt, 
                        "topic": topic,
                        "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
-                dataq.put(sendmsg)
+                logger.info(f"Sending response {sendmsg}")
 
             # something else --->
             else:
@@ -178,7 +184,7 @@ class EventHandler(object):
     def processMiscEvents(self, event):
         for msg in event:
             sendmsg = (RESP_STATUS, str(msg.messageType()))
-            dataq.put(sendmsg) 
+            logger.info(f"Sending response {sendmsg}")
 
     def processEvent(self, event, _session):
         """ event processing selector """
@@ -206,13 +212,14 @@ class EventHandler(object):
         return False
 
 
-class Session(object):
+class SessionRunner(object):
     def __init__(self, options: SessionOptions):
         self.name = options.name
-        self.interval = options.interval
+        self.interval = options.interval # subscription interval
         self.maxEventQueueSize = options.maxEventQueueSize
         self.servicesOpen = dict()
-        self.subscriptionList = dict()
+        self.alive = False
+        self.subscriptionList = blpapi.SubscriptionList()
         self.servicesAvail = {"Subscribe": "//blp/mktdata",
                               "UnSubscribe": "//blp/mktdata",
                               "BarSubscribe": "//blp/mktbar",
@@ -231,19 +238,25 @@ class Session(object):
                               "CategorizedFieldSearchRequest": "//blp/apiflds",
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
-
+    async def open(self):
         sessionOptions = createSessionOptions(globalOptions) 
         sessionOptions.setMaxEventQueueSize(self.maxEventQueueSize)
-        handler = EventHandler()
         self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) 
-        self.eventDdispatcher.start()
+        self.eventDispatcher.start()
+        handler = EventHandler()
         self.session = blpapi.Session(sessionOptions, 
                                       eventHandler=handler.processEvent,
                                       eventDispatcher=self.eventDispatcher)
 
-    async def servicesAvail(self):
-        """ return available services """
-        return {**self.subServicesAvail, **self.refservicesAvail}
+
+
+        if not self.session.start():
+            logger.error("Failed to start session.")
+            self.alive = False
+        else:
+            logger.info("Session started.")
+            self.alive = True
+        return self.grpcRepresentation()
 
     async def openService(self, servString: str):
         """ open a service from the sub and ref services available """
@@ -257,7 +270,20 @@ class Session(object):
             self.servicesOpen[servString] = True
             return True
 
-        
+    def grpcRepresentation(self) -> Session:
+        """ return the session representation in gRPC terms """
+        return Session(name=self.name, 
+                       services=self.servicesAvail.keys(), 
+                       alive=self.alive)
+                       # dummy subscription list TODO this should be real
+
+    async def close(self):
+        """ close the session """
+        self.session.stop()
+        self.eventDispatcher.stop()
+        self.alive = False
+        return self.grpcRepresentation()
+
 
 class SessionManager(SessionManagerServicer):
 
@@ -273,8 +299,7 @@ class SessionManager(SessionManagerServicer):
             print(f"my_number: {self.my_number}")
 
     async def sayHello(
-        self, request: HelloRequest, context: grpc.aio.ServicerContext
-    ) -> HelloReply:
+        self, request: HelloRequest, context: grpc.aio.ServicerContext) -> HelloReply:
         logging.info("Serving sayHello request %s", request)
         for i in range(self.my_number, self.my_number + NUMBER_OF_REPLY):
             yield HelloReply(message=f"Hello number {i}, {request.name}!")
@@ -284,15 +309,27 @@ class SessionManager(SessionManagerServicer):
         logging.info("Serving sum request %s", request)
         return SumResponse(result=request.num1 + request.num2)
 
-    async def openSession(self, request: SessionOptions, context: grpc.aio.ServicerContext) -> Session:
-        logging.info("Serving openSession request %s", request)
-        options = SessionOptions(name=request.name, 
-                                 interval=request.interval, 
-                                 maxEventQueueSize=request.maxEventQueueSize)
-        if not request.name in self.sessions:
-            self.sessions[request.name] = Session(options=options)
-        return self.sessions[request.name]
+    async def openSession(self, options: SessionOptions, context: grpc.aio.ServicerContext) -> Session:
+        if not options.name in self.sessions:
+            logging.info("Serving openSession options %s", options)
+            session = SessionRunner(options=options)
+            grpcRepresentation = await session.open()
+            self.sessions[options.name] = session
+            return grpcRepresentation
+        else:
+            logging.error(f"Session {options.name} already exists")
+            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+            return await self.sessions[options.name].grpcRepresentation()
 
+    async def closeSession(self, session: Session, context: grpc.aio.ServicerContext) -> Session:
+        logging.info("Serving closeSession session %s", session)
+        if session.name in self.sessions:
+            grpcRepresentation = await self.sessions[session.name].close()
+            del self.sessions[session.name]
+            return grpcRepresentation
+        else:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            return session
 
 
 async def serve() -> None:
@@ -312,7 +349,6 @@ async def serve() -> None:
 
     server = grpc.aio.server()
     add_SessionManagerServicer_to_server(SessionManager(), server)
-    breakpoint()
     listen_addr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
     server.add_secure_port(listen_addr, server_credentials) # secure uses the cert
     #server.add_insecure_port(listen_addr) # insecure
