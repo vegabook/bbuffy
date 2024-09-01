@@ -20,7 +20,7 @@ option objc_class_prefix = "HSW";
 package gblp;
 
 // The greeting service definition.
-service MultiGreeter {
+service gBLP {
   // Sends multiple greetings
   rpc sayHello (HelloRequest) returns (stream HelloReply) {}
   rpc sum (SumRequest) returns (SumResponse) {}

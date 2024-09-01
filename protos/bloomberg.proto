@@ -1,0 +1,87 @@
+// colorscheme retrobox light
+
+syntax = "proto3";
+
+
+package bloomberg;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// blpapi session creator destroyer
+service SessionManager {
+  // basic examples TODO delete later
+  rpc sayHello (HelloRequest) returns (stream HelloReply) {}
+  rpc sum (SumRequest) returns (SumResponse) {}
+
+  // Bloomberg
+  rpc openSession (SessionOptions) returns (Session) {}
+  rpc subscribe (Session) returns (Session) {} 
+  rpc sessionInfo (Session) returns (Session) {}
+  rpc unsubscribe (Session) returns (Session) {}
+  rpc closeSession (Session) returns (Session) {}
+  rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
+  //rpc intradayTickRequest. maybe "tick" or "gblpTick"
+  //rpc intradayBarRequest maybe "bar"
+  //rpc historicalDataRequest "daily"
+  //rpc referenceDataRequest "ref"
+}
+
+// The request message containing the user's name and how many greetings
+// they want.
+message SessionOptions {
+  string name = 1;
+  int32 interval = 2; // subscription interval in seconds
+  int32 maxEventQueueSize = 3; // event queue size
+  string topicPrefix = 4; // topic prefix for example '/ticker/'
+}
+
+message Session {
+    message SubscriptionList {
+      repeated string topics = 1;
+      repeated string fields = 2;
+      int32 interval = 3;
+    }
+  string name = 1;
+  repeated string services = 2;
+  SubscriptionList subscriptionList = 3;
+}
+
+message HistoricalDataRequest {
+  string topics = 1;
+  string fields = 2;
+  google.protobuf.Timestamp start = 3; // startDate
+  google.protobuf.Timestamp end = 4; // endDate
+  map <string, string> options = 5;
+  // overrides
+}
+
+message HistoricalDataResponse {
+  string name = 1;
+  // must have
+  google.protobuf.Struct json_data = 2; // Field to store arbitrary JSON
+}
+
+
+// examples TODO delete later
+
+message HelloRequest {
+  string name = 1;
+  string num_greetings = 2;
+}
+
+// A response message containing a greeting
+message HelloReply {
+  string message = 1;
+}
+
+message SumRequest {
+  int32 num1 = 1;
+  int32 num2 = 2;
+}
+
+message SumResponse {
+  int32 result = 1;
+}
+
+

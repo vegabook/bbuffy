@@ -1,5 +1,5 @@
 # Copyright 2021 gRPC authors.
-# colorscheme aiseered
+# colorscheme aiseered dark
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The Python AsyncIO implementation of the GRPC hellostreamingworld.MultiGreeter server."""
 
 import asyncio
 import logging
 
 import grpc
-from gBLP_pb2 import HelloReply
-from gBLP_pb2 import HelloRequest
-from gBLP_pb2 import SumRequest
-from gBLP_pb2 import SumResponse 
-from gBLP_pb2_grpc import MultiGreeterServicer
-from gBLP_pb2_grpc import add_MultiGreeterServicer_to_server
+from bloomberg_pb2 import HelloReply
+from bloomberg_pb2 import HelloRequest
+from bloomberg_pb2 import SumRequest
+from bloomberg_pb2 import SumResponse 
+from bloomberg_pb2_grpc import SessionManagerServicer
+from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server
 from pathlib import Path
 
 import argparse
@@ -38,7 +37,7 @@ CERT_LOCATION_RELATIVE = Path('../certs/out').resolve()
 print(CERT_LOCATION_RELATIVE)
 
 
-class Greeter(MultiGreeterServicer):
+class Greeter(SessionManagerServicer):
 
     def __init__(self):
         self.my_number = 0
@@ -81,7 +80,7 @@ async def serve() -> None:
 
 
     server = grpc.aio.server()
-    add_MultiGreeterServicer_to_server(Greeter(), server)
+    add_SessionManagerServicer_to_server(Greeter(), server)
     #listen_addr = "[::]:50051"
     listen_addr = f"{args.host}:{args.port}"
     server.add_secure_port(listen_addr, server_credentials) # secure uses the cert

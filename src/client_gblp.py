@@ -1,4 +1,5 @@
 # Copyright 2021 gRPC authors.
+# colorscheme iceberg dark
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +17,8 @@ import asyncio
 import logging
 
 import grpc
-import gBLP_pb2
-import gBLP_pb2_grpc
+import bloomberg_pb2
+import bloomberg_pb2_grpc
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -42,11 +43,11 @@ async def run() -> None:
     hostport = f"{args.host}:{args.port}"
 
     async with grpc.aio.secure_channel(hostport, credentials) as channel:
-        stub = gBLP_pb2_grpc.MultiGreeterStub(channel)
+        stub = bloomberg_pb2_grpc.SessionManagerStub(channel)
 
         # Read from an async generator
         async for response in stub.sayHello(
-            gBLP_pb2.HelloRequest(name=args.message)
+            bloomberg_pb2.HelloRequest(name=args.message)
         ):
             print(
                 "Greeter client received from async generator: "
@@ -55,7 +56,7 @@ async def run() -> None:
 
         # Direct read from the stub
         hello_stream = stub.sayHello(
-            gBLP_pb2.HelloRequest(name=str(args.message))
+            bloomberg_pb2.HelloRequest(name=str(args.message))
         )
         while True:
             response = await hello_stream.read()
