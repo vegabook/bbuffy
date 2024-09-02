@@ -238,18 +238,17 @@ class SessionRunner(object):
                               "CategorizedFieldSearchRequest": "//blp/apiflds",
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
+
     async def open(self):
         sessionOptions = createSessionOptions(globalOptions) 
         sessionOptions.setMaxEventQueueSize(self.maxEventQueueSize)
+        sessionOptions.setSessionName(self.name)
         self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) 
         self.eventDispatcher.start()
         handler = EventHandler()
         self.session = blpapi.Session(sessionOptions, 
                                       eventHandler=handler.processEvent,
                                       eventDispatcher=self.eventDispatcher)
-
-
-
         if not self.session.start():
             logger.error("Failed to start session.")
             self.alive = False

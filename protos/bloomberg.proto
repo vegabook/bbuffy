@@ -15,6 +15,7 @@ service SessionManager {
   rpc sum (SumRequest) returns (SumResponse) {}
 
   // Bloomberg
+  rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
   rpc subscribe (Session) returns (Session) {} 
   rpc sessionInfo (Session) returns (Session) {}
