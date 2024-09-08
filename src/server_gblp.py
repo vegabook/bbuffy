@@ -20,6 +20,7 @@ import string
 import random
 from collections import defaultdict
 import json
+import datetime as dt
 
 import queue
 import blpapi
@@ -61,6 +62,12 @@ logger = logging.getLogger(__name__)
 NUMBER_OF_REPLY = 10
 CERT_LOCATION_RELATIVE = '../certs/out/'
 
+# ----------------- util functions ----------------------
+
+def serialize_datetime(obj): 
+    if isinstance(obj, dt.datetime) or isinstance(obj, dt.date):
+        return obj.isoformat() 
+    raise TypeError("Type not serializable") 
 
 # ----------------- parse the command line and session options ---------------
 
@@ -170,8 +177,7 @@ class SessionRunner(object):
         self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) # threaded dispatcher
         self.eventDispatcher.start()
         # queue for our event handler to return messages back to this class
-        self.dataq = queue.Queue()
-        handler = EventHandler(self.dataq)
+        handler = EventHandler(parent = self)
         # now actually open the session
         self.session = blpapi.Session(sessionOptions, 
                                       eventHandler=handler.processEvent,
@@ -182,9 +188,6 @@ class SessionRunner(object):
         else:
             logger.info("Session started.")
             self.alive = True
-        # start the runner process that listens for data messages
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.runner())
         # return all the details over gRPC
         return self.grpcRepresentation()
 
@@ -211,13 +214,22 @@ class SessionRunner(object):
         # create a random 32-character string as the correlationId
         corrString = ''.join(random.choices(string.ascii_uppercase + string.digits, k=32))
         correlationId = blpapi.CorrelationId(corrString)
-        # create a future so that once all the data for the correlation id is received,
-        # by the event handler, the future will be set
-        future = asyncio.get_event_loop().create_future()
-        self.correlators[corrString] = {"future": future, "request": request}
+        #future = asyncio.get_event_loop().create_future()
+        # queue for this request
+        q = queue.Queue()
+        self.correlators[corrString] = {"request": request, "queue": q}
         self.session.sendRequest(bbgRequest, correlationId=correlationId)
-
-        return HistoricalDataResponse(name = correlationId.value())
+        # now wait for all the messages from our request to be received.
+        loop = asyncio.get_event_loop()
+        messageList = []
+        while True:
+            msg = await loop.run_in_executor(None, q.get)
+            messageList.append(msg[1]["data"])
+            if not msg[1]["partial"]:
+                break
+        # remove self correlators
+        del self.correlators[corrString]
+        return messageList
 
     async def _sendInfo(self, command, bbgRequest):
         """ sends back structure information about the request """
@@ -227,23 +239,6 @@ class SessionRunner(object):
         await dataq.put(sendmsg)
 
 
-    async def runner(self):
-        """ runs continously in session to handle messages from the message queue """
-        loop = asyncio.get_event_loop()
-        while self.alive:
-            # await messages from the dataq in async way
-            msg = await loop.run_in_executor(None, self.dataq.get)
-            # process the message
-            if msg[0] == RESP_REF:
-                # whether partial or not, accumulate
-                self.partialAccumulator[msg[1]["cid"]].append(msg[1]["data"])
-                if not msg[1]["partial"]:
-                    # collate data because this is the last message
-                    print(self.partialAccumulator[msg[1]["cid"]])
-                    self.correlators[msg[1]["cid"]]["future"].set_result(self.partialAccumulator[msg[1]["cid"]])
-                    del self.correlators[msg[1]["cid"]]
-                    del self.partialAccumulator[msg[1]["cid"]]
-        logger.info(f"Session {self.name} is dead so runner is stopping.")
 
 
 class SessionManager(SessionManagerServicer):
@@ -298,11 +293,9 @@ class SessionManager(SessionManagerServicer):
         session = self.sessions.get(request.session.name)
         if session:
             data = await session.historicalDataRequest(request)
-            print(f"{Fore.CYAN}{data}{Style.RESET_ALL}")
-            print("---------------------------------------")
+            json_data = json.dumps(data, default = serialize_datetime)
             breakpoint()
-            json_data = json.dumps(data)
-            return HistoricalDataResponse(name="response", json_data=json_data)
+            return HistoricalDataResponse(name = "ewhwqaewra", json_data = json_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return HistoricalDataResponse(error="Session not found")

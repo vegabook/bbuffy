@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 class EventHandler(object):
 
-    def __init__(self, dataq):
-        self.dataq = dataq
+    def __init__(self, parent):
+        self.parent = parent
 
     def getTimeStamp(self):
         return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -29,27 +29,25 @@ class EventHandler(object):
             logger.info((f"Received response to request {msg.getRequestId()} "
                         f"partial {partial}"))
             sendmsg = (RESP_REF, {"cid": cid, "partial": partial, "data": msg.toPy()})
-            self.dataq.put(sendmsg)
+            # now put message into correct queue
+            self.parent.correlators[cid]["queue"].put(sendmsg)
 
     def processSubscriptionStatus(self, event):
         timeStamp = self.getTimeStamp()
         for msg in event:
             pymsg = msg.toPy()
-            topic = msg.correlationId().value()
+            cid = msg.correlationId().value()
             if msg.messageType() == blpapi.Names.SUBSCRIPTION_FAILURE:
                 sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_TERMINATED:
-                correl = msg.correlationId().value()
-                subs.remove(correl)
                 stopevent.set() # DEBUG
                 sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_STARTED:
                 correl = msg.correlationId().value()
-                subs.add(correl)
                 sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
             else:
                 sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-            self.dataq.put(sendmsg)
+            #self.parent.correlators[cid]["queue"].put(sendmsg)
 
     def searchMsg(self, msg, fields):
         return [{"field": field, "value": msg[field]} 
@@ -73,7 +71,7 @@ class EventHandler(object):
 
     def processSubscriptionDataEvent(self, event):
         """ 
-        process subsription data message and put on data queue 
+        process subsription data message and put on queue
         """
         timestamp = self.getTimeStamp()
         timestampdt = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
@@ -88,7 +86,7 @@ class EventHandler(object):
                            blpapi.Name("MarketBarIntervalEnd")):
                 sendmsg = (RESP_BAR, self.makeBarMessage(msg, str(msgtype), 
                                                           topic, interval = 1))
-                self.dataq.put(sendmsg)
+                #self.parent.correlators[cid]["queue"].put(sendmsg)
 
             # subscription --->
             elif msgtype == blpapi.Name("MarketDataEvents"):
@@ -97,7 +95,7 @@ class EventHandler(object):
                        {"timestamp": timestampdt, 
                        "topic": topic,
                        "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
-                self.dataq.put(sendmsg)
+                #self.parent.correlators[cid]["queue"].put(sendmsg)
 
             # something else --->
             else:
@@ -107,7 +105,7 @@ class EventHandler(object):
     def processMiscEvents(self, event):
         for msg in event:
             sendmsg = (RESP_STATUS, str(msg.messageType()))
-            self.dataq.put(sendmsg) 
+            #self.parent.correlators[cid]["queue"].put(sendmsg)
 
 
     def processEvent(self, event, _session):
