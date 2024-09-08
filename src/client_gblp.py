@@ -24,10 +24,12 @@ import bloomberg_pb2_grpc
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
-parser.add_argument('--host', default='signaliser.com')
-parser.add_argument('--port', default='50051')
+parser.add_argument('--grpchost', default='localhost')
+parser.add_argument('--grpcport', default='50051')
 from pathlib import Path
+import datetime as dt
 import time
+from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
@@ -42,7 +44,7 @@ async def run() -> None:
     # Create client credentials
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
-    hostport = f"{args.host}:{args.port}"
+    hostport = f"{args.grpchost}:{args.grpcport}"
 
     async with grpc.aio.secure_channel(hostport, credentials) as channel:
         stub = bloomberg_pb2_grpc.SessionManagerStub(channel)
@@ -74,7 +76,21 @@ async def run() -> None:
         print(f"Opening session: {sessionOptions}")
         session = await stub.openSession(sessionOptions)
         print(f"Opened session: {session}")
-        time.sleep(5)
+        sst = protoTimestamp()
+        sst.FromDatetime(dt.datetime(2019, 1, 1))
+        est = protoTimestamp()
+        est.FromDatetime(dt.datetime(2024, 1, 2))
+        hreq = bloomberg_pb2.HistoricalDataRequest(
+            session=session,
+            topics=["AAPL US Equity", "IBM US Equity"],
+            fields=["PX_LAST", "PX_BID", "PX_ASK"],
+            start=sst,
+            end=est
+        )
+        print(f"Requesting historical data: {hreq}")
+        hdata = await stub.historicalDataRequest(hreq)
+        print(hdata)
+        time.sleep(30)
         closedSession = await stub.closeSession(session)
         print(f"Closed session: {closedSession}")
 

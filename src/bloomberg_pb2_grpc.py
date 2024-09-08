@@ -4,6 +4,7 @@ import grpc
 import warnings
 
 import bloomberg_pb2 as bloomberg__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 GRPC_GENERATED_VERSION = '1.64.1'
 GRPC_VERSION = grpc.__version__
@@ -49,6 +50,11 @@ class SessionManagerStub(object):
                 '/bloomberg.SessionManager/sum',
                 request_serializer=bloomberg__pb2.SumRequest.SerializeToString,
                 response_deserializer=bloomberg__pb2.SumResponse.FromString,
+                _registered_method=True)
+        self.getDefaultOptions = channel.unary_unary(
+                '/bloomberg.SessionManager/getDefaultOptions',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=bloomberg__pb2.SessionOptions.FromString,
                 _registered_method=True)
         self.openSession = channel.unary_unary(
                 '/bloomberg.SessionManager/openSession',
@@ -99,9 +105,15 @@ class SessionManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def openSession(self, request, context):
+    def getDefaultOptions(self, request, context):
         """Bloomberg
         """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def openSession(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -148,6 +160,11 @@ def add_SessionManagerServicer_to_server(servicer, server):
                     servicer.sum,
                     request_deserializer=bloomberg__pb2.SumRequest.FromString,
                     response_serializer=bloomberg__pb2.SumResponse.SerializeToString,
+            ),
+            'getDefaultOptions': grpc.unary_unary_rpc_method_handler(
+                    servicer.getDefaultOptions,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=bloomberg__pb2.SessionOptions.SerializeToString,
             ),
             'openSession': grpc.unary_unary_rpc_method_handler(
                     servicer.openSession,
@@ -235,6 +252,33 @@ class SessionManager(object):
             '/bloomberg.SessionManager/sum',
             bloomberg__pb2.SumRequest.SerializeToString,
             bloomberg__pb2.SumResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getDefaultOptions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.SessionManager/getDefaultOptions',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            bloomberg__pb2.SessionOptions.FromString,
             options,
             channel_credentials,
             insecure,

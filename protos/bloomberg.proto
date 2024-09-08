@@ -7,6 +7,7 @@ package bloomberg;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
 
 // blpapi session creator destroyer
 service SessionManager {
@@ -34,6 +35,7 @@ message SessionOptions {
   string name = 1;
   int32 interval = 2; // subscription interval in seconds
   int32 maxEventQueueSize = 3; // event queue size
+  string error = 4;
 }
 
 message Session {
@@ -46,21 +48,23 @@ message Session {
   repeated string services = 2;
   SubscriptionList subscriptionList = 3;
   bool alive = 4;
+  string error = 5;
 }
 
 message HistoricalDataRequest {
-  string topics = 1;
-  string fields = 2;
-  google.protobuf.Timestamp start = 3; // startDate
-  google.protobuf.Timestamp end = 4; // endDate
-  map <string, string> options = 5;
-  // overrides
+  Session session = 1;
+  repeated string topics = 2; // securities
+  repeated string fields = 3; // fields list
+  google.protobuf.Timestamp start = 4; // startDate
+  google.protobuf.Timestamp end = 5; // endDate
+  map <string, string> options = 6; // overrides
 }
 
 message HistoricalDataResponse {
   string name = 1;
   // must have
   google.protobuf.Struct json_data = 2; // Field to store arbitrary JSON
+  string error = 3;
 }
 
 

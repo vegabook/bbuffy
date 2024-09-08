@@ -1,4 +1,4 @@
-# colorscheme aiseered dark
+# colorscheme blueshift light
 
 # Copyright 2021 gRPC authors.
 #
@@ -16,7 +16,12 @@
 
 import asyncio
 import logging
+import string
+import random
+from collections import defaultdict
+import json
 
+import queue
 import blpapi
 
 import grpc
@@ -26,6 +31,8 @@ from bloomberg_pb2 import SumRequest
 from bloomberg_pb2 import SumResponse 
 from bloomberg_pb2 import Session
 from bloomberg_pb2 import SessionOptions
+from bloomberg_pb2 import HistoricalDataRequest 
+from bloomberg_pb2 import HistoricalDataResponse
 
 from bloomberg_pb2_grpc import SessionManagerServicer
 from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server
@@ -39,6 +46,13 @@ from util.ConnectionAndAuthOptions import \
     addConnectionAndAuthOptions, \
     createSessionOptions
 
+from util.EventHandler import EventHandler, RESP_INFO, RESP_REF, RESP_SUB, \
+    RESP_BAR, RESP_STATUS, RESP_ERROR, RESP_ACK
+
+from colorama import Fore, Back, Style, init as colinit
+colinit()
+
+
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -47,13 +61,6 @@ logger = logging.getLogger(__name__)
 NUMBER_OF_REPLY = 10
 CERT_LOCATION_RELATIVE = '../certs/out/'
 
-RESP_INFO = "info"
-RESP_REF = "refdata"
-RESP_SUB = "subdata"
-RESP_BAR = "bardata"
-RESP_STATUS = "status"
-RESP_ERROR = "error"
-RESP_ACK = "ack"
 
 # ----------------- parse the command line and session options ---------------
 
@@ -75,7 +82,13 @@ def parseCmdLine():
         type=str,
         help="Port that this gRPC will respond to.",
         default="50051")
-
+    # add a boolean make-cert argument
+    parser.add_argument(
+        "--make-cert",
+        dest="make_cert",
+        help="Generate a self-signed certificate",
+        action="store_true",
+        default=False)
     options = parser.parse_args()
     options.options.append(f"interval=1")
     return options
@@ -83,134 +96,7 @@ def parseCmdLine():
 globalOptions = parseCmdLine()
 
 
-# -------------------- session and event handlers ----------------------
-
-class EventHandler(object):
-
-    def __init__(self): 
-        pass
-
-    def getTimeStamp(self):
-        return time.strftime("%Y-%m-%d %H:%M:%S")
-
-    def processResponseEvent(self, event, partial):
-        for msg in event:
-            cid = msg.correlationId().value()
-            logger.info((f"Received response to request {msg.getRequestId()} "
-                        f"partial {partial}"))
-            sendmsg = (RESP_REF, {"cid": cid, "partial": partial, "data": msg.toPy()})
-            logger.info(f"Sending response {sendmsg}")
-
-    def processSubscriptionStatus(self, event):
-        timeStamp = self.getTimeStamp()
-        for msg in event:
-            pymsg = msg.toPy()
-            topic = msg.correlationId().value()
-            match msg.messageType():
-                case blpapi.Names.SUBSCRIPTION_DATA:
-                    sendmsg = (RESP_SUB, {"timestamp": timeStamp, "topic": topic, "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
-                case blpapi.Names.SUBSCRIPTION_FAILURE:
-                    sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-                case blpapi.Names.SUBSCRIPTION_TERMINATED:
-                    correl = msg.correlationId().value()
-                    subs.remove(correl)
-                    print(f"!!!!!!! sub terminated for {correl}")
-                    stopevent.set()
-                    sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-                case blpapi.Names.SUBSCRIPTION_STARTED:
-                    correl = msg.correlationId().value()
-                    subs.add(correl)
-                    sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-                case blpapi.Names.SUBSCRIPTION_FAILURE:
-                    sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-                case _:
-                    sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
-            logger.info(f"Sending response {sendmsg}")
-
-
-    def searchMsg(self, msg, fields):
-        return [{"field": field, "value": msg[field]} 
-                for field in fields if msg.hasElement(field)]
-
-    def makeBarMessage(self, msg, msgtype, topic, interval):
-        msgdict = {"msgtype": msgtype, "topic": topic, "interval": interval}
-        for f, m in {"open": "OPEN", 
-                     "high": "HIGH", 
-                     "low": "LOW", 
-                     "close": "CLOSE", 
-                     "volume": "VOLUME", 
-                     "numticks": "NUMBER_OF_TICKS",
-                     "timestamp": "DATE_TIME"}.items():
-            if msg.hasElement(m):
-                msgdict[f] = msg[m]
-            else:
-                msgdict[f] = None
-
-        return msgdict
-
-    def processSubscriptionDataEvent(self, event):
-        """ 
-        process subsription data message and put on data queue 
-        """
-        timestamp = self.getTimeStamp()
-        timestampdt = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
-        for msg in event:
-            fulltopic = msg.correlationId().value()
-            topic = fulltopic.split("/")[-1] # just ticker
-            msgtype = msg.messageType()
-            # bars --->
-            if msgtype in (blpapi.Name("MarketBarUpdate"),
-                           blpapi.Name("MarketBarStart"),
-                           blpapi.Name("MarketBarEnd"),
-                           blpapi.Name("MarketBarIntervalEnd")):
-                sendmsg = (RESP_BAR, self.makeBarMessage(msg, str(msgtype), 
-                                                          topic, interval = 1))
-                logger.info(f"Sending response {sendmsg}")
-
-            # subscription --->
-            elif msgtype == blpapi.Name("MarketDataEvents"):
-                # mktdata event type
-                sendmsg = (RESP_SUB, 
-                       {"timestamp": timestampdt, 
-                       "topic": topic,
-                       "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
-                logger.info(f"Sending response {sendmsg}")
-
-            # something else --->
-            else:
-                logger.warning(f"Unknown message type {msgtype}")
-                breakpoint()
-
-    def processMiscEvents(self, event):
-        for msg in event:
-            sendmsg = (RESP_STATUS, str(msg.messageType()))
-            logger.info(f"Sending response {sendmsg}")
-
-    def processEvent(self, event, _session):
-        """ event processing selector """
-        try:
-            match event.eventType():
-                case blpapi.Event.PARTIAL_RESPONSE:
-                    self.processResponseEvent(event, True)
-                case blpapi.Event.RESPONSE:
-                    self.processResponseEvent(event, False)     
-                case blpapi.Event.REQUEST_STATUS:
-                    for msg in event:
-                        if msg.messageType == blpapi.Names.REQUEST_FAILURE:
-                            reason=msg.getElement("reason")
-                            print(f"Request failed: {reason}")
-                            done = True
-                        done = True
-                case blpapi.Event.SUBSCRIPTION_DATA:
-                    self.processSubscriptionDataEvent(event)
-                case blpapi.Event.SUBSCRIPTION_STATUS:
-                    self.processSubscriptionStatus(event)
-                case _:
-                    self.processMiscEvents(event)
-        except blpapi.Exception as e:
-            print(f"Failed to process event {event}: {e}")
-        return False
-
+# -------------------- session handler ----------------------
 
 class SessionRunner(object):
     def __init__(self, options: SessionOptions):
@@ -218,7 +104,10 @@ class SessionRunner(object):
         self.interval = options.interval # subscription interval
         self.maxEventQueueSize = options.maxEventQueueSize
         self.servicesOpen = dict()
+        self.correlators = dict()
+        self.partialAccumulator = defaultdict(list)
         self.alive = False
+        self.session = None # must SessionRunner.open() one first
         self.subscriptionList = blpapi.SubscriptionList()
         self.servicesAvail = {"Subscribe": "//blp/mktdata",
                               "UnSubscribe": "//blp/mktdata",
@@ -239,13 +128,51 @@ class SessionRunner(object):
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
 
+
+    def _getService(self, serviceReq: str) -> bool:
+        """ open a service from the sub and ref services available """
+        if not self.session:
+            error = "Session not open"
+            logger.error(error)
+            return HistoricalDataResponse(error=error)
+        if not self.servicesOpen.get(serviceReq):
+            if not self.session.openService(self.servicesAvail[serviceReq]):
+                error = "Failed to open service HistoricalDataRequest"
+                logger.error(error)
+                return HistoricalDataResponse(error=error)
+            else:
+                self.servicesOpen[serviceReq] = self.servicesAvail[serviceReq]
+                logger.info("Opened service HistoricalDataRequest")
+        logger.info(f"Service {serviceReq} is open via {self.servicesOpen[serviceReq]}")
+        return self.servicesOpen[serviceReq]
+
+
+    def _createEmptyRequest(self, serviceReq: str) -> blpapi.Request:
+        service = self._getService(serviceReq)
+        request = self.session.getService(service).createRequest(serviceReq)
+        return request
+
+
+    def grpcRepresentation(self) -> Session:
+        """ return the session representation in gRPC terms """
+        return Session(name=self.name, 
+                       services=self.servicesAvail.keys(), 
+                       alive=self.alive)
+                       # dummy subscription list TODO this should be real
+
     async def open(self):
+        """ open the session and associated services """
+        # setup the correct options
         sessionOptions = createSessionOptions(globalOptions) 
         sessionOptions.setMaxEventQueueSize(self.maxEventQueueSize)
         sessionOptions.setSessionName(self.name)
-        self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) 
+        # mulithreaded dispather. not strictly needed
+        self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) # threaded dispatcher
         self.eventDispatcher.start()
-        handler = EventHandler()
+        # queue for our event handler to return messages back to this class
+        self.dataq = queue.Queue()
+        handler = EventHandler(self.dataq)
+        # now actually open the session
         self.session = blpapi.Session(sessionOptions, 
                                       eventHandler=handler.processEvent,
                                       eventDispatcher=self.eventDispatcher)
@@ -255,26 +182,11 @@ class SessionRunner(object):
         else:
             logger.info("Session started.")
             self.alive = True
+        # start the runner process that listens for data messages
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.runner())
+        # return all the details over gRPC
         return self.grpcRepresentation()
-
-    async def openService(self, servString: str):
-        """ open a service from the sub and ref services available """
-        if not servString in self.servicesAvail.values():
-            logger.error(f"Service {servString} not available")
-            return
-        if not self.refservices["session"].openService(servString):
-            logger.error(f"Failed to open service {servString}")
-            return False
-        else:
-            self.servicesOpen[servString] = True
-            return True
-
-    def grpcRepresentation(self) -> Session:
-        """ return the session representation in gRPC terms """
-        return Session(name=self.name, 
-                       services=self.servicesAvail.keys(), 
-                       alive=self.alive)
-                       # dummy subscription list TODO this should be real
 
     async def close(self):
         """ close the session """
@@ -282,6 +194,56 @@ class SessionRunner(object):
         self.eventDispatcher.stop()
         self.alive = False
         return self.grpcRepresentation()
+
+    async def historicalDataRequest(self, request: HistoricalDataRequest) -> HistoricalDataResponse:
+        """ request historical data """
+        logger.info(f"Requesting historical data {request}")
+        bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
+        #self._sendInfo("HistoricalDataRequest", bbgRequest)
+        logger.info(f"setting securities {request.topics}")
+        dtstart = request.start.ToDatetime().strftime("%Y%m%d")
+        dtend = request.end.ToDatetime().strftime("%Y%m%d")
+        requestDict = {"securities": request.topics,
+                       "fields": request.fields,
+                       "startDate": dtstart,
+                       "endDate": dtend}
+        bbgRequest.fromPy(requestDict)
+        # create a random 32-character string as the correlationId
+        corrString = ''.join(random.choices(string.ascii_uppercase + string.digits, k=32))
+        correlationId = blpapi.CorrelationId(corrString)
+        # create a future so that once all the data for the correlation id is received,
+        # by the event handler, the future will be set
+        future = asyncio.get_event_loop().create_future()
+        self.correlators[corrString] = {"future": future, "request": request}
+        self.session.sendRequest(bbgRequest, correlationId=correlationId)
+
+        return HistoricalDataResponse(name = correlationId.value())
+
+    async def _sendInfo(self, command, bbgRequest):
+        """ sends back structure information about the request """
+        desc = bbgRequest.asElement().elementDefinition()
+        strdesc = desc.toString()
+        sendmsg = (RESP_INFO, {"request_type": command, "structure": strdesc})
+        await dataq.put(sendmsg)
+
+
+    async def runner(self):
+        """ runs continously in session to handle messages from the message queue """
+        loop = asyncio.get_event_loop()
+        while self.alive:
+            # await messages from the dataq in async way
+            msg = await loop.run_in_executor(None, self.dataq.get)
+            # process the message
+            if msg[0] == RESP_REF:
+                # whether partial or not, accumulate
+                self.partialAccumulator[msg[1]["cid"]].append(msg[1]["data"])
+                if not msg[1]["partial"]:
+                    # collate data because this is the last message
+                    print(self.partialAccumulator[msg[1]["cid"]])
+                    self.correlators[msg[1]["cid"]]["future"].set_result(self.partialAccumulator[msg[1]["cid"]])
+                    del self.correlators[msg[1]["cid"]]
+                    del self.partialAccumulator[msg[1]["cid"]]
+        logger.info(f"Session {self.name} is dead so runner is stopping.")
 
 
 class SessionManager(SessionManagerServicer):
@@ -318,7 +280,7 @@ class SessionManager(SessionManagerServicer):
         else:
             logging.error(f"Session {options.name} already exists")
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
-            return await self.sessions[options.name].grpcRepresentation()
+            return self.sessions[options.name].grpcRepresentation()
 
     async def closeSession(self, session: Session, context: grpc.aio.ServicerContext) -> Session:
         logging.info("Serving closeSession session %s", session)
@@ -329,6 +291,21 @@ class SessionManager(SessionManagerServicer):
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return session
+
+    async def historicalDataRequest(self, 
+                                    request: HistoricalDataRequest, 
+                                    context: grpc.aio.ServicerContext) -> HistoricalDataResponse:
+        session = self.sessions.get(request.session.name)
+        if session:
+            data = await session.historicalDataRequest(request)
+            print(f"{Fore.CYAN}{data}{Style.RESET_ALL}")
+            print("---------------------------------------")
+            breakpoint()
+            json_data = json.dumps(data)
+            return HistoricalDataResponse(name="response", json_data=json_data)
+        else:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            return HistoricalDataResponse(error="Session not found")
 
 
 async def serve() -> None:
@@ -358,4 +335,7 @@ async def serve() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(serve())
+    if globalOptions.make_cert:
+        print("not implemented")
+    else:
+        asyncio.run(serve())
