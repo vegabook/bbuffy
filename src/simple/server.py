@@ -30,6 +30,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--grpchost', default='localhost')
 parser.add_argument('--grpcport', default='50051')
+# add insecure argument
+parser.add_argument('--insecure', action='store_true', default=False)
 args = parser.parse_args()
 
 from pathlib import Path
@@ -92,19 +94,19 @@ async def serve() -> None:
         print(f"CAfile: {CAfile}")
         ca_cert = f.read()
 
-    # secure server credentials
-    #server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),), 
-    #                                                 root_certificates=ca_cert, 
-    #                                                 require_client_auth=True)
-
-    # insecure server credentials
-    server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
-
     server = grpc.aio.server()
     add_simpleServiceServicer_to_server(Greeter(), server)
     listen_addr = f"{args.grpchost}:{args.grpcport}"
-    #server.add_secure_port(listen_addr, server_credentials) # secure uses the cert
-    server.add_insecure_port(listen_addr) # insecure
+
+    if args.insecure:
+        server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
+        server.add_insecure_port(listen_addr) 
+    else:
+        server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),), 
+                                                         root_certificates=ca_cert, 
+                                                         require_client_auth=True)
+        server.add_secure_port(listen_addr, server_credentials) 
+
     logging.info("Starting server on %s", listen_addr)
     await server.start()
     await server.wait_for_termination()
