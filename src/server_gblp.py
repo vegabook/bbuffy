@@ -1,4 +1,4 @@
-# colorscheme blueshift light
+# colorscheme blue dark
 
 # Copyright 2021 gRPC authors.
 #
@@ -37,6 +37,9 @@ from bloomberg_pb2 import HistoricalDataResponse
 
 from bloomberg_pb2_grpc import SessionManagerServicer
 from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server
+
+from google.protobuf import struct_pb2
+
 from argparse import ArgumentParser, RawTextHelpFormatter
 from pathlib import Path
 
@@ -55,7 +58,7 @@ colinit()
 
 
 import logging
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -250,7 +253,7 @@ class SessionManager(SessionManagerServicer):
 
     async def do_stuff_regularly(self):
         while True:
-            await asyncio.sleep(10)
+            await asyncio.sleep(1)
             self.my_number -= 1
             print(f"my_number: {self.my_number}")
 
@@ -266,6 +269,10 @@ class SessionManager(SessionManagerServicer):
         return SumResponse(result=request.num1 + request.num2)
 
     async def openSession(self, options: SessionOptions, context: grpc.aio.ServicerContext) -> Session:
+        print("opening session")
+        auth_context = context.auth_context()
+        print(f"auth_context: {auth_context}")
+        breakpoint()
         if not options.name in self.sessions:
             logging.info("Serving openSession options %s", options)
             session = SessionRunner(options=options)
@@ -293,9 +300,10 @@ class SessionManager(SessionManagerServicer):
         session = self.sessions.get(request.session.name)
         if session:
             data = await session.historicalDataRequest(request)
-            json_data = json.dumps(data, default = serialize_datetime)
             breakpoint()
-            return HistoricalDataResponse(name = "ewhwqaewra", json_data = json_data)
+            json_data = struct_pb2.Struct()
+            json_data.update({"data": data})
+            return HistoricalDataResponse(name = "", json_data = json_data)
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return HistoricalDataResponse(error="Session not found")
@@ -303,18 +311,27 @@ class SessionManager(SessionManagerServicer):
 
 async def serve() -> None:
 
-    keyfile = CERT_LOCATION_RELATIVE + 'zombie.key'
+    keyfile = CERT_LOCATION_RELATIVE + 'server.key'
     with open(keyfile, 'rb') as f:
         print(f"keyfile: {keyfile}")
-        private_key = f.read()
+        server_key = f.read()
 
-    certfile = CERT_LOCATION_RELATIVE + 'zombie.crt'
+    certfile = CERT_LOCATION_RELATIVE + 'server.crt'
     with open(certfile, 'rb') as f:
         print(f"certfile: {certfile}")
-        certificate_chain = f.read()
+        server_cert = f.read()
+
+    CAfile = CERT_LOCATION_RELATIVE + 'zombieCA.crt'
+    with open(CAfile, 'rb') as f:
+        print(f"CAfile: {CAfile}")
+        ca_cert = f.read()
 
     # Create server credentials
-    server_credentials = grpc.ssl_server_credentials(((private_key, certificate_chain),))
+    #server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),), 
+    #                                                 root_certificates=ca_cert, 
+    #                                                 require_client_auth=True)
+
+    server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
 
     server = grpc.aio.server()
     add_SessionManagerServicer_to_server(SessionManager(), server)

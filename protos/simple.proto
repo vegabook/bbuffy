@@ -14,13 +14,11 @@
 
 syntax = "proto3";
 
-option java_package = "ex.grpc";
-option objc_class_prefix = "HSW";
 
-package gblp;
+package simple;
 
 // The greeting service definition.
-service gBLP {
+service simpleService {
   // Sends multiple greetings
   rpc sayHello (HelloRequest) returns (stream HelloReply) {}
   rpc sum (SumRequest) returns (SumResponse) {}

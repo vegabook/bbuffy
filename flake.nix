@@ -36,6 +36,7 @@
             python311Packages.grpcio
             python311Packages.grpcio-tools
             python311Packages.ipython
+            python311Packages.colorama
             grpc-tools
             certstrap
           ];

@@ -18,8 +18,8 @@ import asyncio
 import logging
 
 import grpc
-import bloomberg_pb2
-import bloomberg_pb2_grpc
+import simple_pb2
+import simple_pb2_grpc
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -33,7 +33,7 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
-CERT_LOCATION_RELATIVE = Path('../certs/out').resolve()
+CERT_LOCATION_RELATIVE = Path('../../certs/out').resolve()
 
 async def run() -> None:
     certfile = Path(CERT_LOCATION_RELATIVE, 'client.crt')
@@ -57,14 +57,14 @@ async def run() -> None:
     hostport = f"{args.grpchost}:{args.grpcport}"
 
     # connect with insecure channel
-    #async with grpc.aio.insecure_channel(hostport) as channel:
-
-    async with grpc.aio.secure_channel(hostport, credentials) as channel:
-        stub = bloomberg_pb2_grpc.SessionManagerStub(channel)
+    async with grpc.aio.insecure_channel(hostport) as channel:
+    # connect with secure channel
+    #async with grpc.aio.secure_channel(hostport, credentials) as channel:
+        stub = simple_pb2_grpc.simpleServiceStub(channel)
 
         # Read from an async generator
         async for response in stub.sayHello(
-            bloomberg_pb2.HelloRequest(name=args.message)
+            simple_pb2.HelloRequest(name=args.message)
         ):
             print(
                 "Greeter client received from async generator: "
@@ -73,7 +73,7 @@ async def run() -> None:
 
         # Direct read from the stub
         hello_stream = stub.sayHello(
-            bloomberg_pb2.HelloRequest(name=str(args.message))
+            simple_pb2.HelloRequest(name=str(args.message))
         )
         while True:
             response = await hello_stream.read()
@@ -83,29 +83,6 @@ async def run() -> None:
                 "Greeter client received from direct read: " + response.message
             )
 
-        sessionOptions = bloomberg_pb2.SessionOptions(
-            name="session1", interval=1, maxEventQueueSize=100000
-        )
-        print(f"Opening session: {sessionOptions}")
-        session = await stub.openSession(sessionOptions)
-        print(f"Opened session: {session}")
-        sst = protoTimestamp()
-        sst.FromDatetime(dt.datetime(2019, 1, 1))
-        est = protoTimestamp()
-        est.FromDatetime(dt.datetime(2024, 1, 2))
-        hreq = bloomberg_pb2.HistoricalDataRequest(
-            session=session,
-            topics=["AAPL US Equity", "IBM US Equity"],
-            fields=["PX_LAST", "PX_BID", "PX_ASK"],
-            start=sst,
-            end=est
-        )
-        print(f"Requesting historical data: {hreq}")
-        hdata = await stub.historicalDataRequest(hreq)
-        print(hdata)
-        time.sleep(30)
-        closedSession = await stub.closeSession(session)
-        print(f"Closed session: {closedSession}")
 
 
 if __name__ == "__main__":
