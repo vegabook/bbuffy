@@ -16,15 +16,17 @@
 
 import asyncio
 import logging
+import certifi
 
 import grpc
+
 import simple_pb2
 import simple_pb2_grpc
 
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
-parser.add_argument('--grpchost', default='localhost')
+parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--insecure', action='store_true', default=False)
 from pathlib import Path
@@ -34,34 +36,34 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
-CERT_LOCATION_RELATIVE = Path('../../certs/out').resolve()
+CLIENT_CERT_LOCATION_RELATIVE = Path('../../certs/out').resolve()
 
 async def run() -> None:
-    certfile = Path(CERT_LOCATION_RELATIVE, 'client.crt')
-    with open(certfile, 'rb') as f:
-        client_cert = f.read()
 
-    keyfile = Path(CERT_LOCATION_RELATIVE, 'client.key')
-    with open(keyfile, 'rb') as f:
-        client_key = f.read()
+    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/client.crt", "rb") as f:
+        client_certificate = f.read()
 
-    CAfile = Path(CERT_LOCATION_RELATIVE, 'zombieCA.crt')
-    with open(certfile, 'rb') as f:
-        ca_cert = f.read()
+    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/client.key", "rb") as f:
+        client_private_key = f.read()
+
+    # Load certifi"s CA bundle to verify the server"s certificate
+    with open(certifi.where(), "rb") as f:
+        ca_certificate = f.read()
 
     # Create client credentials
-    credentials = grpc.ssl_channel_credentials(
-        root_certificates=ca_cert,
-        private_key=client_key,
-        certificate_chain=client_cert)
+    client_credentials = grpc.ssl_channel_credentials(
+        root_certificates=ca_certificate,
+        private_key=client_private_key,
+        certificate_chain=client_certificate
+    )
 
-    hostport = f"{args.grpchost}:{args.grpcport}"
+    hostandport = f"{args.grpchost}:{args.grpcport}"
 
     if args.insecure:
-        async with grpc.aio.insecure_channel(hostport) as channel:
+        async with grpc.aio.insecure_channel(hostandport) as channel:
             stub = simple_pb2_grpc.simpleServiceStub(channel)
     else:
-        async with grpc.aio.secure_channel(hostport, credentials) as channel:
+        async with grpc.aio.secure_channel(hostandport, credentials) as channel:
             stub = simple_pb2_grpc.simpleServiceStub(channel)
 
     # Read from an async generator

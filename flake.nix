@@ -37,12 +37,16 @@
             python311Packages.grpcio-tools
             python311Packages.ipython
             python311Packages.colorama
+            python311Packages.certifi
             grpc-tools
             certstrap
+            openssl_3_3
+            certbot
           ];
 
           shellHook = ''
             echo "Python 3.11 development environment"
+            alias ipy="ipython --nosep"
           '';
         };
       });

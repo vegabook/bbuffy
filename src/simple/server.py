@@ -28,7 +28,7 @@ from simple_pb2_grpc import add_simpleServiceServicer_to_server
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--grpchost', default='localhost')
+parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 # add insecure argument
 parser.add_argument('--insecure', action='store_true', default=False)
@@ -46,7 +46,8 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 
 NUMBER_OF_REPLY = 10
-CERT_LOCATION_RELATIVE = '../../certs/out/'
+SERVER_CERT_LOCATION_RELATIVE = '../../certs/out/server'
+CLIENT_CERT_LOCATION_RELATIVE = '../../certs/out/client'
 
 
 
@@ -79,32 +80,39 @@ class Greeter(simpleServiceServicer):
 
 async def serve() -> None:
 
-    keyfile = CERT_LOCATION_RELATIVE + 'server.key'
-    with open(keyfile, 'rb') as f:
-        print(f"keyfile: {keyfile}")
-        server_key = f.read()
+    # Load server certificate, private key, and client's CA certificate
+    with open(f"{SERVER_CERT_LOCATION_RELATIVE}/fullchain.pem", 'rb') as f:
+        server_certificate = f.read()
 
-    certfile = CERT_LOCATION_RELATIVE + 'server.crt'
-    with open(certfile, 'rb') as f:
-        print(f"certfile: {certfile}")
-        server_cert = f.read()
+    with open(f"{SERVER_CERT_LOCATION_RELATIVE}/privkey.pem", 'rb') as f:
+        server_private_key = f.read()
 
-    CAfile = CERT_LOCATION_RELATIVE + 'zombieCA.crt'
-    with open(CAfile, 'rb') as f:
-        print(f"CAfile: {CAfile}")
-        ca_cert = f.read()
+    # Load the client's CA certificate (custom or trusted CA)
+    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/ca.pem", 'rb') as f:
+        client_ca_certificate = f.read()
+
+    # Create SSL credentials for the server (with client certificate verification)
+    server_credentials = grpc.ssl_server_credentials(
+        [(server_private_key, server_certificate)],
+        root_certificates=client_ca_certificate,
+        require_client_auth=True
+    )
+
+
 
     server = grpc.aio.server()
     add_simpleServiceServicer_to_server(Greeter(), server)
     listen_addr = f"{args.grpchost}:{args.grpcport}"
 
     if args.insecure:
-        server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
+        server_credentials = grpc.ssl_server_credentials(((server_private_key, server_certificate),))
         server.add_insecure_port(listen_addr) 
     else:
-        server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),), 
-                                                         root_certificates=ca_cert, 
-                                                         require_client_auth=True)
+        server_credentials = grpc.ssl_server_credentials(
+            [(server_private_key, server_certificate)],
+            root_certificates=client_ca_certificate,
+            require_client_auth=True
+        )
         server.add_secure_port(listen_addr, server_credentials) 
 
     logging.info("Starting server on %s", listen_addr)
