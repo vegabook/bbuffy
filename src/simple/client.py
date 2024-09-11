@@ -29,6 +29,7 @@ parser.add_argument('--message', default='hello!')
 parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--insecure', action='store_true', default=False)
+parser.add_argument('--certstrap', action='store_true', default=False)
 from pathlib import Path
 import datetime as dt
 import time
@@ -36,7 +37,7 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
-CLIENT_CERT_LOCATION_RELATIVE = Path('../../certs/out').resolve()
+CLIENT_CERT_LOCATION_RELATIVE = Path('../../certs/out/client').resolve()
 
 async def run() -> None:
 
@@ -62,30 +63,50 @@ async def run() -> None:
     if args.insecure:
         async with grpc.aio.insecure_channel(hostandport) as channel:
             stub = simple_pb2_grpc.simpleServiceStub(channel)
-    else:
-        async with grpc.aio.secure_channel(hostandport, credentials) as channel:
-            stub = simple_pb2_grpc.simpleServiceStub(channel)
+            # Read from an async generator
+            async for response in stub.sayHello(
+                simple_pb2.HelloRequest(name=args.message)
+            ):
+                print(
+                    "Greeter client received from async generator: "
+                    + response.message
+                )
 
-    # Read from an async generator
-    async for response in stub.sayHello(
-        simple_pb2.HelloRequest(name=args.message)
-    ):
-        print(
-            "Greeter client received from async generator: "
-            + response.message
-        )
-
-    # Direct read from the stub
-    hello_stream = stub.sayHello(
-        simple_pb2.HelloRequest(name=str(args.message))
-    )
-    while True:
-        response = await hello_stream.read()
-        if response == grpc.aio.EOF:
-            break
-        print(
-            "Greeter client received from direct read: " + response.message
+            # Direct read from the stub
+            hello_stream = stub.sayHello(
+                simple_pb2.HelloRequest(name=str(args.message))
             )
+            while True:
+                response = await hello_stream.read()
+                if response == grpc.aio.EOF:
+                    break
+                print(
+                    "Greeter client received from direct read: " + response.message
+                    )
+    else:
+        print("Secure connection")
+        async with grpc.aio.secure_channel(hostandport, client_credentials) as channel:
+            stub = simple_pb2_grpc.simpleServiceStub(channel)
+            # Read from an async generator
+            async for response in stub.sayHello(
+                simple_pb2.HelloRequest(name=args.message)
+            ):
+                print(
+                    "Greeter client received from async generator: "
+                    + response.message
+                )
+
+            # Direct read from the stub
+            hello_stream = stub.sayHello(
+                simple_pb2.HelloRequest(name=str(args.message))
+            )
+            while True:
+                response = await hello_stream.read()
+                if response == grpc.aio.EOF:
+                    break
+                print(
+                    "Greeter client received from direct read: " + response.message
+                    )
 
 
 

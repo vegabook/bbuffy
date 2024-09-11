@@ -39,10 +39,8 @@
             python311Packages.colorama
             python311Packages.certifi
             grpc-tools
-            certstrap
             openssl_3_3
-            certbot
-            neofetch
+            certstrap
           ];
           shellHook = ''
             echo "Python 3.11 development environment"

@@ -49,6 +49,7 @@ NUMBER_OF_REPLY = 10
 SERVER_CERT_LOCATION_RELATIVE = '../../certs/out/server'
 CLIENT_CERT_LOCATION_RELATIVE = '../../certs/out/client'
 
+# full grpc instructions that actually work: https://chatgpt.com/share/e/a92ad120-9ffc-49e8-b77d-cac7fe0df943
 
 
 class Greeter(simpleServiceServicer):
@@ -67,6 +68,9 @@ class Greeter(simpleServiceServicer):
         self, request: HelloRequest, context: grpc.aio.ServicerContext
     ) -> HelloReply:
         logging.info("Serving sayHello request %s", request)
+        if not args.insecure:
+            client_key = context.auth_context()["x509_pem_cert"]
+            print(f"{Fore.WHITE}{Style.BRIGHT}Client certificate: {Fore.BLUE}{client_key}{Style.RESET_ALL}")
         for i in range(self.my_number, self.my_number + NUMBER_OF_REPLY):
             yield HelloReply(message=f"Hello number {i}, {request.name}!")
         self.my_number += NUMBER_OF_REPLY
@@ -75,7 +79,6 @@ class Greeter(simpleServiceServicer):
     async def sum(self, request: SumRequest, context: grpc.aio.ServicerContext) -> SumResponse:
         logging.info("Serving sum request %s", request)
         return SumResponse(result=request.num1 + request.num2)
-
 
 
 async def serve() -> None:
@@ -97,7 +100,6 @@ async def serve() -> None:
         root_certificates=client_ca_certificate,
         require_client_auth=True
     )
-
 
 
     server = grpc.aio.server()
