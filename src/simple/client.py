@@ -37,19 +37,23 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
-CLIENT_CERT_LOCATION_RELATIVE = Path('../../certs/out/client').resolve()
+CLIENT_CERT_LOCATION_RELATIVE = '../../certs/out/client'
 
 async def run() -> None:
+    if args.certstrap:
+        CLIENT_CERTS = '../../certs/out'
+        # Load certifi"s CA bundle to verify the server"s certificate
+        with open(f"{CLIENT_CERTS}/zombieCA.crt", "rb") as f:
+            ca_certificate = f.read()
+    else:
+        CLIENT_CERTS = CLIENT_CERT_LOCATION_RELATIVE
+        with open(certifi.where(), "rb") as f:
+            ca_certificate = f.read()
 
-    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/client.crt", "rb") as f:
+    with open(f"{CLIENT_CERTS}/client.crt", "rb") as f:
         client_certificate = f.read()
-
-    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/client.key", "rb") as f:
+    with open(f"{CLIENT_CERTS}/client.key", "rb") as f:
         client_private_key = f.read()
-
-    # Load certifi"s CA bundle to verify the server"s certificate
-    with open(certifi.where(), "rb") as f:
-        ca_certificate = f.read()
 
     # Create client credentials
     client_credentials = grpc.ssl_channel_credentials(

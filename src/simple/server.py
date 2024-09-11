@@ -32,6 +32,8 @@ parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 # add insecure argument
 parser.add_argument('--insecure', action='store_true', default=False)
+# if we're using certstrap keys
+parser.add_argument('--certstrap', action='store_true', default=False)
 args = parser.parse_args()
 
 from pathlib import Path
@@ -83,15 +85,23 @@ class Greeter(simpleServiceServicer):
 
 async def serve() -> None:
 
+    if args.certstrap:
+        print("certstrap")
+        SERVER_CERTS = '../../certs/out'
+        CLIENT_CERTS = '../../certs/out'
+    else:
+        SERVER_CERTS = SERVER_CERT_LOCATION_RELATIVE
+        CLIENT_CERTS = CLIENT_CERT_LOCATION_RELATIVE
+
     # Load server certificate, private key, and client's CA certificate
-    with open(f"{SERVER_CERT_LOCATION_RELATIVE}/fullchain.pem", 'rb') as f:
+    with open(f"{SERVER_CERTS}/fullchain.pem", 'rb') as f:
         server_certificate = f.read()
 
-    with open(f"{SERVER_CERT_LOCATION_RELATIVE}/privkey.pem", 'rb') as f:
+    with open(f"{SERVER_CERTS}/privkey.pem", 'rb') as f:
         server_private_key = f.read()
 
     # Load the client's CA certificate (custom or trusted CA)
-    with open(f"{CLIENT_CERT_LOCATION_RELATIVE}/ca.pem", 'rb') as f:
+    with open(f"{CLIENT_CERTS}/ca.pem", 'rb') as f:
         client_ca_certificate = f.read()
 
     # Create SSL credentials for the server (with client certificate verification)
