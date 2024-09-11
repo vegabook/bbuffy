@@ -42,8 +42,8 @@
             certstrap
             openssl_3_3
             certbot
+            neofetch
           ];
-
           shellHook = ''
             echo "Python 3.11 development environment"
             alias ipy="ipython --nosep"
