@@ -38,6 +38,7 @@
             python311Packages.ipython
             python311Packages.colorama
             python311Packages.certifi
+            python311Packages.cryptography
             grpc-tools
             openssl_3_3
             certstrap
