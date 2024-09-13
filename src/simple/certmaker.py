@@ -106,37 +106,55 @@ with open(OUTDIR + "user_certificate.pem", "wb") as cert_file:
 print("User certificate generated and saved.")
 
 # -------------------------------------------- server grpc
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.backends import default_backend
+import datetime
 
-
-# Generate server private key
+# Generate the server private key
 server_private_key = rsa.generate_private_key(
     public_exponent=65537,
     key_size=2048,
     backend=default_backend()
 )
 
-# Create server certificate request
+# Define the server subject with the domain name in the CN field
 server_subject = x509.Name([
     x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
     x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
     x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"My Server Organization"),
-    x509.NameAttribute(NameOID.COMMON_NAME, u"localhost"),  # Server's CN (e.g., domain or localhost)
+    x509.NameAttribute(NameOID.COMMON_NAME, u"signaliser.com"),  # Server's domain name
 ])
 
-csr = x509.CertificateSigningRequestBuilder().subject_name(server_subject).sign(
-    server_private_key, hashes.SHA256(), default_backend()
+# Create the server CSR
+csr = x509.CertificateSigningRequestBuilder().subject_name(server_subject)
+
+# Add Subject Alternative Name (SAN) extension to support the domain name
+csr = csr.add_extension(
+    x509.SubjectAlternativeName([x509.DNSName(u"signaliser.com")]), critical=False
 )
+
+# Sign the CSR with the server's private key
+csr = csr.sign(server_private_key, hashes.SHA256(), default_backend())
 
 # Issue the server certificate using the CA
 server_certificate = (
     x509.CertificateBuilder()
     .subject_name(csr.subject)
-    .issuer_name(ca_certificate.subject)
+    .issuer_name(ca_certificate.subject)  # CA is the issuer
     .public_key(server_private_key.public_key())
     .serial_number(x509.random_serial_number())
     .not_valid_before(datetime.datetime.utcnow())
     .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))  # 1 year validity
+    .add_extension(
+        x509.BasicConstraints(ca=False, path_length=None), critical=True,
+    )
+    .add_extension(
+        x509.SubjectAlternativeName([x509.DNSName(u"signaliser.com")]), critical=False
+    )
     .sign(ca_private_key, hashes.SHA256(), default_backend())
 )
 
@@ -153,7 +171,9 @@ with open(OUTDIR + "server_private_key.pem", "wb") as key_file:
 with open(OUTDIR + "server_certificate.pem", "wb") as cert_file:
     cert_file.write(server_certificate.public_bytes(serialization.Encoding.PEM))
 
-print("Server certificate and private key saved.")
+print("Server certificate for 'signaliser.com' and private key saved.")
+
+
 
 
 #------------------------------------------- client grpc

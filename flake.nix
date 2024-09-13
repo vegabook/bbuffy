@@ -6,10 +6,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs"; # also valid: "nixpkgs"
   };
 
-  nixConfig = {
-    bash-prompt-prefix = "🍠 gBLP";
-  };
-
   # Flake outputs
   outputs = { self, nixpkgs }:
     let
@@ -46,6 +42,7 @@
           shellHook = ''
             echo "Python 3.11 development environment"
             alias ipy="ipython --nosep"
+            export PS1="🧢 \e[38;5;211m\]g\e[38;5;111mBLP\[\e[0m $PS1";
           '';
         };
       });
