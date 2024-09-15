@@ -27,6 +27,7 @@ parser.add_argument('--message', default='hello!')
 parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--grpckeyport', default='50052')
+parser.add_argument('--delcerts', action='store_true', default=False)
 from pathlib import Path
 import datetime as dt
 import time
@@ -133,4 +134,11 @@ async def run() -> None:
 
 if __name__ == "__main__":
     logging.basicConfig()
-    asyncio.run(run())
+    if args.delcerts:
+        confdir = get_conf_dir()
+        for f in confdir.glob("*.pem"):
+            f.unlink()
+        print("Deleted certs.")
+    else:
+        asyncio.run(run())
+

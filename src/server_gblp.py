@@ -87,8 +87,7 @@ def parseCmdLine():
         "--grpchost",
         dest="grpchost",
         help="Hostname that this gRPC will respond to.",
-        type=str,
-        default="localhost")
+        type=str)
     parser.add_argument(
         "--grpcport",
         dest="grpcport",
@@ -103,14 +102,16 @@ def parseCmdLine():
         default="50052")
     # add a boolean make-cert argument
     parser.add_argument(
-        "--make-cert",
+        "--gencerts",
         dest="gencerts",
         help="Generate a self-signed certificate",
         action="store_true",
         default=False)
     parser.add_argument(
-        "--insecure", 
-        action="store_true", 
+        "--delcerts",
+        dest="delcerts",
+        help="Delete all certificates",
+        action="store_true",
         default=False)
     options = parser.parse_args()
     options.options.append(f"interval=1")
@@ -326,7 +327,7 @@ class SessionManager(SessionManagerServicer):
 
 class KeyManager(KeyManagerServicer):
     # responds on an insecure port with client certificates
-    # but only if authorised.  
+    # but only if authorised by the server. 
 
     def __init__(self):
         pass
@@ -414,6 +415,12 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     if globalOptions.gencerts:
-        print("not implemented")
+        confdir = get_conf_dir()
+        make_all_certs(str(globalOptions.grpchost), confdir)
+    elif globalOptions.delcerts:
+        confdir = get_conf_dir()
+        for f in confdir.glob("*.pem"):
+            f.unlink()
+        print("Deleted all certificates. Run --gencerts to make new ones.")
     else:
         asyncio.run(main())

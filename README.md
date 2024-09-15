@@ -10,6 +10,26 @@ This software is provided "as is," without warranty of any kind, express or impl
 
 $$\textcolor{JungleGreen}{\rule{120cm}{0.5mm}}$$
 
+## Quickstart
+Recall that Bloomberg API is only available from Windows, so the server must be run from Windows. Also, 
+you cannot move data off machine, according to the Bloomberg API terms. So at least one of the clients (Windows, Linux, Mac) or the server (Windows only) must be in a VM. 
+
+# Server
+1. In a Microsoft Windows shell, Clone this repo and `cd gRPC`. 
+2. Ensure Python 3.10+ is installed and `pip install -r requirements.txt`.
+3. In the `src` directory you will find `server_gblp.py` which is your server. 
+4. You need the IP address of the machine running the Bloomberg Terminal. Get it with `ipconfig`.
+5. First you must generate a CA authority and keys: `python server_gblp.py --grpchost <your_ip> --gencerts`
+6. Then you can start the server: `python server_gblp.py --grpchost <your_ip> --grpcport 50051`
+
+# Client
+An example Python client is provided which will say hello a few times and run a sample `historicalDataRequest`.
+It is also located in the `src` directory. Now you can be on a mac, on Linux, WSL, wherever. Naturally, 
+you will need access to the IP address of your server. 
+1. In a shell on your client machine, clone this repo and `cd gRPC/src`. 
+2. Ensure Python 3.10+ is installed and `pip install -r requirements.txt`.
+3. Run the client: `python client_gblp.py --grpchost <your_ip> --grpcport 50051`
+
 
 ## Description
 Bloomberg provides native APIs for Python, Java, C#, and C++. This project aims to provide a Python-based gRPC server that can be used by any gRPC-capable programming language to access the Bloomberg V3 API. 

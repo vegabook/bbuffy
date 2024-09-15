@@ -210,6 +210,9 @@ def get_conf_dir():
 def make_all_certs(hostname, outdir = get_conf_dir()):
     # make CA authority, make cerver certs, make client certs, 
     # save to outdir
+    if hostname is None or hostname == "None" or hostname == "":
+        print("Hostname cannot be None or empty.")
+        return
     outdir = get_conf_dir()
     outdir.mkdir(parents=True, exist_ok=True)
 
