@@ -6,10 +6,10 @@ import warnings
 import bloomberg_pb2 as bloomberg__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
-GRPC_GENERATED_VERSION = '1.64.1'
+GRPC_GENERATED_VERSION = '1.65.1'
 GRPC_VERSION = grpc.__version__
-EXPECTED_ERROR_RELEASE = '1.65.0'
-SCHEDULED_RELEASE_DATE = 'June 25, 2024'
+EXPECTED_ERROR_RELEASE = '1.66.0'
+SCHEDULED_RELEASE_DATE = 'August 6, 2024'
 _version_not_supported = False
 
 try:
@@ -31,8 +31,169 @@ if _version_not_supported:
     )
 
 
+class KeyManagerStub(object):
+    """Key management
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.keyRequest = channel.unary_unary(
+                '/bloomberg.KeyManager/keyRequest',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=bloomberg__pb2.KeyResponse.FromString,
+                _registered_method=True)
+        self.sayHello = channel.unary_stream(
+                '/bloomberg.KeyManager/sayHello',
+                request_serializer=bloomberg__pb2.HelloRequest.SerializeToString,
+                response_deserializer=bloomberg__pb2.HelloReply.FromString,
+                _registered_method=True)
+        self.sum = channel.unary_unary(
+                '/bloomberg.KeyManager/sum',
+                request_serializer=bloomberg__pb2.SumRequest.SerializeToString,
+                response_deserializer=bloomberg__pb2.SumResponse.FromString,
+                _registered_method=True)
+
+
+class KeyManagerServicer(object):
+    """Key management
+    """
+
+    def keyRequest(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def sayHello(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def sum(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_KeyManagerServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'keyRequest': grpc.unary_unary_rpc_method_handler(
+                    servicer.keyRequest,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=bloomberg__pb2.KeyResponse.SerializeToString,
+            ),
+            'sayHello': grpc.unary_stream_rpc_method_handler(
+                    servicer.sayHello,
+                    request_deserializer=bloomberg__pb2.HelloRequest.FromString,
+                    response_serializer=bloomberg__pb2.HelloReply.SerializeToString,
+            ),
+            'sum': grpc.unary_unary_rpc_method_handler(
+                    servicer.sum,
+                    request_deserializer=bloomberg__pb2.SumRequest.FromString,
+                    response_serializer=bloomberg__pb2.SumResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'bloomberg.KeyManager', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('bloomberg.KeyManager', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class KeyManager(object):
+    """Key management
+    """
+
+    @staticmethod
+    def keyRequest(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.KeyManager/keyRequest',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            bloomberg__pb2.KeyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def sayHello(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/bloomberg.KeyManager/sayHello',
+            bloomberg__pb2.HelloRequest.SerializeToString,
+            bloomberg__pb2.HelloReply.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def sum(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.KeyManager/sum',
+            bloomberg__pb2.SumRequest.SerializeToString,
+            bloomberg__pb2.SumResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+
 class SessionManagerStub(object):
-    """blpapi session creator destroyer
+    """Bloomberg API session management
     """
 
     def __init__(self, channel):
@@ -89,7 +250,7 @@ class SessionManagerStub(object):
 
 
 class SessionManagerServicer(object):
-    """blpapi session creator destroyer
+    """Bloomberg API session management
     """
 
     def sayHello(self, request, context):
@@ -205,7 +366,7 @@ def add_SessionManagerServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class SessionManager(object):
-    """blpapi session creator destroyer
+    """Bloomberg API session management
     """
 
     @staticmethod

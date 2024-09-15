@@ -32,8 +32,6 @@ parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 # add insecure argument
 parser.add_argument('--insecure', action='store_true', default=False)
-# if we're using certstrap keys
-parser.add_argument('--certstrap', action='store_true', default=False)
 args = parser.parse_args()
 
 from pathlib import Path
@@ -48,8 +46,7 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 
 NUMBER_OF_REPLY = 10
-SERVER_CERT_LOCATION_RELATIVE = '../../certs/out/server'
-CLIENT_CERT_LOCATION_RELATIVE = '../../certs/out/client'
+CERTDIR = "../../certs/out/pycerts/"
 
 # full grpc instructions that actually work: https://chatgpt.com/share/e/a92ad120-9ffc-49e8-b77d-cac7fe0df943
 
@@ -85,45 +82,29 @@ class Greeter(simpleServiceServicer):
 
 async def serve() -> None:
 
-    if args.certstrap:
-        print("certstrap")
-        SERVER_CERTS = '../../certs/out'
-        CLIENT_CERTS = '../../certs/out'
-    else:
-        SERVER_CERTS = SERVER_CERT_LOCATION_RELATIVE
-        CLIENT_CERTS = CLIENT_CERT_LOCATION_RELATIVE
+    # Load server's certificate and private key
+    with open(CERTDIR+"server_certificate.pem", "rb") as f:
+        server_cert = f.read()
 
-    # Load server certificate, private key, and client's CA certificate
-    with open(f"{SERVER_CERTS}/fullchain.pem", 'rb') as f:
-        server_certificate = f.read()
+    with open(CERTDIR+"server_private_key.pem", "rb") as f:
+        server_key = f.read()
 
-    with open(f"{SERVER_CERTS}/privkey.pem", 'rb') as f:
-        server_private_key = f.read()
-
-    # Load the client's CA certificate (custom or trusted CA)
-    with open(f"{CLIENT_CERTS}/ca.pem", 'rb') as f:
-        client_ca_certificate = f.read()
-
-    # Create SSL credentials for the server (with client certificate verification)
-    server_credentials = grpc.ssl_server_credentials(
-        [(server_private_key, server_certificate)],
-        root_certificates=client_ca_certificate,
-        require_client_auth=True
-    )
-
+    # Load CA certificate to verify clients
+    with open(CERTDIR+"ca_certificate.pem", "rb") as f:
+        ca_cert = f.read()
 
     server = grpc.aio.server()
     add_simpleServiceServicer_to_server(Greeter(), server)
     listen_addr = f"{args.grpchost}:{args.grpcport}"
 
     if args.insecure:
-        server_credentials = grpc.ssl_server_credentials(((server_private_key, server_certificate),))
+        server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
         server.add_insecure_port(listen_addr) 
     else:
         server_credentials = grpc.ssl_server_credentials(
-            [(server_private_key, server_certificate)],
-            root_certificates=client_ca_certificate,
-            require_client_auth=True
+            [(server_key, server_cert)],
+            root_certificates=ca_cert,
+            require_client_auth=True,  # Require clients to provide valid certificates
         )
         server.add_secure_port(listen_addr, server_credentials) 
 

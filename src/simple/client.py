@@ -29,7 +29,6 @@ parser.add_argument('--message', default='hello!')
 parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--insecure', action='store_true', default=False)
-parser.add_argument('--certstrap', action='store_true', default=False)
 from pathlib import Path
 import datetime as dt
 import time
@@ -37,81 +36,44 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 
 args = parser.parse_args()
 
-CLIENT_CERT_LOCATION_RELATIVE = '../../certs/out/client'
+CERT_LOCATION_RELATIVE = "../../certs/out/pycerts/"
 
 async def run() -> None:
-    if args.certstrap:
-        CLIENT_CERTS = '../../certs/out'
-        # Load certifi"s CA bundle to verify the server"s certificate
-        with open(f"{CLIENT_CERTS}/zombieCA.crt", "rb") as f:
-            ca_certificate = f.read()
-    else:
-        CLIENT_CERTS = CLIENT_CERT_LOCATION_RELATIVE
-        with open(certifi.where(), "rb") as f:
-            ca_certificate = f.read()
-
-    with open(f"{CLIENT_CERTS}/client.crt", "rb") as f:
-        client_certificate = f.read()
-    with open(f"{CLIENT_CERTS}/client.key", "rb") as f:
-        client_private_key = f.read()
-
-    # Create client credentials
-    client_credentials = grpc.ssl_channel_credentials(
-        root_certificates=ca_certificate,
-        private_key=client_private_key,
-        certificate_chain=client_certificate
-    )
 
     hostandport = f"{args.grpchost}:{args.grpcport}"
 
     if args.insecure:
-        async with grpc.aio.insecure_channel(hostandport) as channel:
-            stub = simple_pb2_grpc.simpleServiceStub(channel)
-            # Read from an async generator
-            async for response in stub.sayHello(
-                simple_pb2.HelloRequest(name=args.message)
-            ):
-                print(
-                    "Greeter client received from async generator: "
-                    + response.message
-                )
-
-            # Direct read from the stub
-            hello_stream = stub.sayHello(
-                simple_pb2.HelloRequest(name=str(args.message))
-            )
-            while True:
-                response = await hello_stream.read()
-                if response == grpc.aio.EOF:
-                    break
-                print(
-                    "Greeter client received from direct read: " + response.message
-                    )
+        channel = grpc.aio.insecure_channel(hostandport)
     else:
-        print("Secure connection")
-        async with grpc.aio.secure_channel(hostandport, client_credentials) as channel:
-            stub = simple_pb2_grpc.simpleServiceStub(channel)
-            # Read from an async generator
-            async for response in stub.sayHello(
-                simple_pb2.HelloRequest(name=args.message)
-            ):
-                print(
-                    "Greeter client received from async generator: "
-                    + response.message
-                )
+        with open(CERT_LOCATION_RELATIVE+"client_certificate.pem", "rb") as f:
+            client_cert = f.read()
+        with open(CERT_LOCATION_RELATIVE+"client_private_key.pem", "rb") as f:
+            client_key = f.read()
+        # Load CA certificate to verify the server
+        with open(CERT_LOCATION_RELATIVE+"ca_certificate.pem", "rb") as f:
+            ca_cert = f.read()
+        # Create SSL credentials for the client
+        client_credentials = grpc.ssl_channel_credentials(
+            root_certificates=ca_cert,
+            private_key=client_key,
+            certificate_chain=client_cert,
+        )
+        channel = grpc.aio.secure_channel(hostandport, client_credentials)
 
-            # Direct read from the stub
-            hello_stream = stub.sayHello(
-                simple_pb2.HelloRequest(name=str(args.message))
-            )
-            while True:
-                response = await hello_stream.read()
-                if response == grpc.aio.EOF:
-                    break
-                print(
-                    "Greeter client received from direct read: " + response.message
-                    )
-
+    async with channel as chan:
+        stub = simple_pb2_grpc.simpleServiceStub(chan)
+        # Read from an async generator
+        async for response in stub.sayHello( simple_pb2.HelloRequest(name=args.message)):
+            print("Greeter client received from async generator: " + response.message)
+        # Direct read from the stub
+        hello_stream = stub.sayHello(
+            simple_pb2.HelloRequest(name=str(args.message))
+        )
+        while True:
+            response = await hello_stream.read()
+            if response == grpc.aio.EOF:
+                break
+            print("Greeter client received from direct read: " + response.message)
 
 
 if __name__ == "__main__":

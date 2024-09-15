@@ -9,7 +9,14 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
 
-// blpapi session creator destroyer
+// Key management
+service KeyManager {
+  rpc keyRequest (google.protobuf.Empty) returns (KeyResponse) {}
+  rpc sayHello (HelloRequest) returns (stream HelloReply) {}
+  rpc sum (SumRequest) returns (SumResponse) {}
+}
+
+// Bloomberg API session management
 service SessionManager {
   // basic examples TODO delete later
   rpc sayHello (HelloRequest) returns (stream HelloReply) {}
@@ -65,6 +72,12 @@ message HistoricalDataResponse {
   // must have
   google.protobuf.Struct json_data = 2; // Field to store arbitrary JSON
   string error = 3;
+}
+
+message KeyResponse {
+  string key = 1;
+  string cert = 2;
+  string cacert = 3;
 }
 
 

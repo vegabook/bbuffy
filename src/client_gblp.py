@@ -26,41 +26,50 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
 parser.add_argument('--grpchost', default='localhost')
 parser.add_argument('--grpcport', default='50051')
+parser.add_argument('--grpckeyport', default='50052')
 from pathlib import Path
 import datetime as dt
 import time
 from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
+from util.certMaker import get_conf_dir
 
 args = parser.parse_args()
 
-CERT_LOCATION_RELATIVE = Path('../certs/out').resolve()
 
 async def run() -> None:
-    certfile = Path(CERT_LOCATION_RELATIVE, 'client.crt')
-    with open(certfile, 'rb') as f:
+
+    ichannel = grpc.aio.insecure_channel(f"{args.grpchost}:{args.grpckeyport}") # insecure for keys
+    # now look for keys
+    if not ((get_conf_dir() / "client_certificate.pem").exists() and \
+            (get_conf_dir() / "client_private_key.pem").exists() and \
+            (get_conf_dir() / "ca_certificate.pem").exists()):
+        yn = input("Keys not found. Ask server? y/n <enter>: ")
+        if yn.lower() == "y":
+
+
+            
+    channel = grpc.aio.insecure_channel(f"{args.grpchost}:{args.grpcport}") # insecure for keys
+    with open(get_conf_dir() / "client_certificate.pem", "rb") as f:
         client_cert = f.read()
-
-    keyfile = Path(CERT_LOCATION_RELATIVE, 'client.key')
-    with open(keyfile, 'rb') as f:
+    with open(get_conf_dir() / "client_private_key.pem", "rb") as f:
         client_key = f.read()
-
-    CAfile = Path(CERT_LOCATION_RELATIVE, 'zombieCA.crt')
-    with open(certfile, 'rb') as f:
+    # Load CA certificate to verify the server
+    with open(get_conf_dir() / "ca_certificate.pem", "rb") as f:
         ca_cert = f.read()
-
-    # Create client credentials
-    credentials = grpc.ssl_channel_credentials(
+    # Create SSL credentials for the client
+    client_credentials = grpc.ssl_channel_credentials(
         root_certificates=ca_cert,
         private_key=client_key,
-        certificate_chain=ca_cert)
+        certificate_chain=client_cert,
+    )
+    channel = grpc.aio.secure_channel(hostandport, client_credentials)
 
-    hostport = f"{args.grpchost}:{args.grpcport}"
+    hostandport = f"{args.grpchost}:{args.grpcport}"
 
-    # connect with insecure channel
-    #async with grpc.aio.insecure_channel(hostport) as channel:
+    #async with grpc.aio.insecure_channel(hostandport) as channel:
 
-    async with grpc.aio.secure_channel(hostport, credentials) as channel:
-        stub = bloomberg_pb2_grpc.SessionManagerStub(channel)
+    async with channel as chan:
+        stub = bloomberg_pb2_grpc.SessionManagerStub(chan)
 
         # Read from an async generator
         async for response in stub.sayHello(

@@ -34,9 +34,10 @@ from bloomberg_pb2 import Session
 from bloomberg_pb2 import SessionOptions
 from bloomberg_pb2 import HistoricalDataRequest 
 from bloomberg_pb2 import HistoricalDataResponse
+from bloomberg_pb2 import KeyResponse
 
-from bloomberg_pb2_grpc import SessionManagerServicer
-from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server
+from bloomberg_pb2_grpc import SessionManagerServicer, KeyManagerServicer
+from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server, add_KeyManagerServicer_to_server
 
 from google.protobuf import struct_pb2
 
@@ -49,9 +50,10 @@ from util.SubscriptionOptions import \
 from util.ConnectionAndAuthOptions import \
     addConnectionAndAuthOptions, \
     createSessionOptions
-
 from util.EventHandler import EventHandler, RESP_INFO, RESP_REF, RESP_SUB, \
     RESP_BAR, RESP_STATUS, RESP_ERROR, RESP_ACK
+from util.certMaker import get_conf_dir, make_client_certs
+
 
 from colorama import Fore, Back, Style, init as colinit
 colinit()
@@ -63,7 +65,6 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 
 NUMBER_OF_REPLY = 10
-CERT_LOCATION_RELATIVE = '../certs/out/'
 
 # ----------------- util functions ----------------------
 
@@ -90,14 +91,24 @@ def parseCmdLine():
         "--grpcport",
         dest="grpcport",
         type=str,
-        help="Port that this gRPC will respond to.",
+        help="Bloomberg session grpc port",
         default="50051")
+    parser.add_argument(
+        "--grpckeyport",
+        dest="grpckeyport",
+        type=str,
+        help="Key request grpc port (for client certificates)",
+        default="50052")
     # add a boolean make-cert argument
     parser.add_argument(
         "--make-cert",
         dest="make_cert",
         help="Generate a self-signed certificate",
         action="store_true",
+        default=False)
+    parser.add_argument(
+        "--insecure", 
+        action="store_true", 
         default=False)
     options = parser.parse_args()
     options.options.append(f"interval=1")
@@ -245,6 +256,8 @@ class SessionRunner(object):
 
 
 class SessionManager(SessionManagerServicer):
+    # implements all the gRPC methods for the session manager
+    # and communicates with the SessionRunner(s)
 
     def __init__(self):
         self.my_number = 0
@@ -309,43 +322,62 @@ class SessionManager(SessionManagerServicer):
             return HistoricalDataResponse(error="Session not found")
 
 
-async def serve() -> None:
+class KeyManager(KeyManagerServicer):
+    # responds on an insecure port with client certificates
+    # but only if authorised.  
 
-    keyfile = CERT_LOCATION_RELATIVE + 'server.key'
-    with open(keyfile, 'rb') as f:
-        print(f"keyfile: {keyfile}")
-        server_key = f.read()
+    def __init__(self):
+        pass
 
-    certfile = CERT_LOCATION_RELATIVE + 'server.crt'
-    with open(certfile, 'rb') as f:
-        print(f"certfile: {certfile}")
-        server_cert = f.read()
+    async def keyRequest(self, request, context: grpc.aio.ServicerContext) -> KeyResponse:
+        # TODO here you gotta ask if you want to grant the request
+        logging.info("Serving keyRequest request %s", request)
+        key, cert = make_client_certs(globalOptions.grpchost, get_conf_dir())
+        return KeyResponse(key=key, cert=cert)
 
-    CAfile = CERT_LOCATION_RELATIVE + 'zombieCA.crt'
-    with open(CAfile, 'rb') as f:
-        print(f"CAfile: {CAfile}")
-        ca_cert = f.read()
 
-    # Create server credentials
-    #server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),), 
-    #                                                 root_certificates=ca_cert, 
-    #                                                 require_client_auth=True)
+async def serveSession() -> None:
 
-    server_credentials = grpc.ssl_server_credentials(((server_key, server_cert),))
+    listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
+    sessionServer = grpc.aio.server()
+    add_SessionManagerServicer_to_server(SessionManager(), sessionServer)
 
-    server = grpc.aio.server()
-    add_SessionManagerServicer_to_server(SessionManager(), server)
-    listen_addr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
-    server.add_secure_port(listen_addr, server_credentials) # secure uses the cert
-    #server.add_insecure_port(listen_addr) # insecure
-    logging.info("Starting server on %s", listen_addr)
-    await server.start()
-    await server.wait_for_termination()
+    # Load server's certificate and private key
+    with open(get_conf_dir() / "server_certificate.pem", "rb") as f:
+        serverCert = f.read()
+    with open(get_conf_dir() / "server_private_key.pem", "rb") as f:
+        serverKey = f.read()
+    # Load CA certificate to verify clients
+    with open(get_conf_dir() / "ca_certificate.pem", "rb") as f:
+        CAcert = f.read()
 
+    serverCredentials = grpc.ssl_server_credentials(
+        [(serverKey, serverCert)],
+        root_certificates=CAcert,
+        require_client_auth=True,  # Require clients to provide valid certificates
+    )
+    sessionServer.add_secure_port(listenAddr, serverCredentials) 
+    logging.info(f"Starting session server on {listenAddr}")
+    await sessionServer.start()
+    await sessionServer.wait_for_termination()
+
+
+async def keySession() -> None:
+
+    keyListenAddr = f"{globalOptions.grpchost}:{globalOptions.grpckeyport}"
+    keyServer = grpc.aio.server()
+    add_KeyManagerServicer_to_server(KeyManager(), keyServer)
+    keyServer.add_insecure_port(keyListenAddr) # this listens without credentials
+    logging.info(f"Starting key server on {keyListenAddr}")
+    await keyServer.start()
+    await keyServer.wait_for_termination()
+
+async def main():
+    await asyncio.gather(serveSession(), keySession())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     if globalOptions.make_cert:
         print("not implemented")
     else:
-        asyncio.run(serve())
+        asyncio.run(main())
