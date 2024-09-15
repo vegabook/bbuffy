@@ -41,9 +41,9 @@ class KeyManagerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.keyRequest = channel.unary_unary(
-                '/bloomberg.KeyManager/keyRequest',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        self.requestKey = channel.unary_unary(
+                '/bloomberg.KeyManager/requestKey',
+                request_serializer=bloomberg__pb2.KeyRequestId.SerializeToString,
                 response_deserializer=bloomberg__pb2.KeyResponse.FromString,
                 _registered_method=True)
         self.sayHello = channel.unary_stream(
@@ -62,7 +62,7 @@ class KeyManagerServicer(object):
     """Key management
     """
 
-    def keyRequest(self, request, context):
+    def requestKey(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -83,9 +83,9 @@ class KeyManagerServicer(object):
 
 def add_KeyManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'keyRequest': grpc.unary_unary_rpc_method_handler(
-                    servicer.keyRequest,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            'requestKey': grpc.unary_unary_rpc_method_handler(
+                    servicer.requestKey,
+                    request_deserializer=bloomberg__pb2.KeyRequestId.FromString,
                     response_serializer=bloomberg__pb2.KeyResponse.SerializeToString,
             ),
             'sayHello': grpc.unary_stream_rpc_method_handler(
@@ -111,7 +111,7 @@ class KeyManager(object):
     """
 
     @staticmethod
-    def keyRequest(request,
+    def requestKey(request,
             target,
             options=(),
             channel_credentials=None,
@@ -124,8 +124,8 @@ class KeyManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.KeyManager/keyRequest',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            '/bloomberg.KeyManager/requestKey',
+            bloomberg__pb2.KeyRequestId.SerializeToString,
             bloomberg__pb2.KeyResponse.FromString,
             options,
             channel_credentials,

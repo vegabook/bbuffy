@@ -34,7 +34,7 @@ from bloomberg_pb2 import Session
 from bloomberg_pb2 import SessionOptions
 from bloomberg_pb2 import HistoricalDataRequest 
 from bloomberg_pb2 import HistoricalDataResponse
-from bloomberg_pb2 import KeyResponse
+from bloomberg_pb2 import KeyRequestId, KeyResponse
 
 from bloomberg_pb2_grpc import SessionManagerServicer, KeyManagerServicer
 from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server, add_KeyManagerServicer_to_server
@@ -52,7 +52,9 @@ from util.ConnectionAndAuthOptions import \
     createSessionOptions
 from util.EventHandler import EventHandler, RESP_INFO, RESP_REF, RESP_SUB, \
     RESP_BAR, RESP_STATUS, RESP_ERROR, RESP_ACK
-from util.certMaker import get_conf_dir, make_client_certs
+
+from util.certMaker import get_conf_dir, make_client_certs, make_all_certs
+from cryptography.hazmat.primitives import serialization, hashes
 
 
 from colorama import Fore, Back, Style, init as colinit
@@ -102,7 +104,7 @@ def parseCmdLine():
     # add a boolean make-cert argument
     parser.add_argument(
         "--make-cert",
-        dest="make_cert",
+        dest="gencerts",
         help="Generate a self-signed certificate",
         action="store_true",
         default=False)
@@ -262,7 +264,7 @@ class SessionManager(SessionManagerServicer):
     def __init__(self):
         self.my_number = 0
         self.sessions = dict()
-        asyncio.create_task(self.do_stuff_regularly())
+        #asyncio.create_task(self.do_stuff_regularly())
 
     async def do_stuff_regularly(self):
         while True:
@@ -270,8 +272,7 @@ class SessionManager(SessionManagerServicer):
             self.my_number -= 1
             print(f"my_number: {self.my_number}")
 
-    async def sayHello(
-        self, request: HelloRequest, context: grpc.aio.ServicerContext) -> HelloReply:
+    async def sayHello(self, request: HelloRequest, context: grpc.aio.ServicerContext) -> HelloReply:
         logging.info("Serving sayHello request %s", request)
         for i in range(self.my_number, self.my_number + NUMBER_OF_REPLY):
             yield HelloReply(message=f"Hello number {i}, {request.name}!")
@@ -281,7 +282,8 @@ class SessionManager(SessionManagerServicer):
         logging.info("Serving sum request %s", request)
         return SumResponse(result=request.num1 + request.num2)
 
-    async def openSession(self, options: SessionOptions, context: grpc.aio.ServicerContext) -> Session:
+    async def openSession(self, options: SessionOptions, 
+                          context: grpc.aio.ServicerContext) -> Session:
         print("opening session")
         auth_context = context.auth_context()
         print(f"auth_context: {auth_context}")
@@ -329,11 +331,32 @@ class KeyManager(KeyManagerServicer):
     def __init__(self):
         pass
 
-    async def keyRequest(self, request, context: grpc.aio.ServicerContext) -> KeyResponse:
+    async def input_timeout(self, prompt, timeout):
+        # Run the blocking input() function in a separate thread
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(input, prompt), 
+                                          timeout=timeout)
+        except asyncio.TimeoutError:
+            return None 
+
+    async def requestKey(self, 
+                         request: KeyRequestId, 
+                         context: grpc.aio.ServicerContext) -> KeyResponse:
         # TODO here you gotta ask if you want to grant the request
         logging.info("Serving keyRequest request %s", request)
-        key, cert = make_client_certs(globalOptions.grpchost, get_conf_dir())
-        return KeyResponse(key=key, cert=cert)
+        accept = await self.input_timeout((f"Received request from {context.peer()}"
+                        f" with id {request.id}. Accept? (y/n) "), 5)
+        if accept is None:
+            context.set_code(grpc.StatusCode.DEADLINE_EXCEEDED)
+            return KeyResponse(error="Request timed out")
+        if accept.lower() == "y":
+            key, cert, cacert = make_client_certs(globalOptions.grpchost, get_conf_dir())
+            bcacert = cacert.public_bytes(serialization.Encoding.PEM)
+            logger.info(f"Key request granted for {request.id} and {context.peer()}")
+            return KeyResponse(key=key, cert=cert, cacert=bcacert, error = "")
+        else:
+            context.set_code(grpc.StatusCode.PERMISSION_DENIED)
+            return KeyResponse(error="Request denied")
 
 
 async def serveSession() -> None:
@@ -342,14 +365,27 @@ async def serveSession() -> None:
     sessionServer = grpc.aio.server()
     add_SessionManagerServicer_to_server(SessionManager(), sessionServer)
 
+    # first check if the certs are there
+    confdir = get_conf_dir()
+    if not ((confdir / "server_certificate.pem").exists() and \
+            (confdir / "server_private_key.pem").exists() and \
+            (confdir / "ca_certificate.pem").exists()):
+        yn = input("Certificates not found. Make them? (y/n) ")
+        if yn.lower() == "y":
+            make_all_certs(str(globalOptions.grpchost), confdir)
+        else:
+            print("Exiting.")
+
+
     # Load server's certificate and private key
-    with open(get_conf_dir() / "server_certificate.pem", "rb") as f:
+    with open(confdir / "server_certificate.pem", "rb") as f:
         serverCert = f.read()
-    with open(get_conf_dir() / "server_private_key.pem", "rb") as f:
+    with open(confdir / "server_private_key.pem", "rb") as f:
         serverKey = f.read()
     # Load CA certificate to verify clients
-    with open(get_conf_dir() / "ca_certificate.pem", "rb") as f:
+    with open(confdir / "ca_certificate.pem", "rb") as f:
         CAcert = f.read()
+
 
     serverCredentials = grpc.ssl_server_credentials(
         [(serverKey, serverCert)],
@@ -377,7 +413,7 @@ async def main():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    if globalOptions.make_cert:
+    if globalOptions.gencerts:
         print("not implemented")
     else:
         asyncio.run(main())

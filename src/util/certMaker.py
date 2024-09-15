@@ -3,7 +3,6 @@
 # makes CA certificates, server certificates, and client certificates
 # based on https://chatgpt.com/share/e/b30d1f31-1c70-48c7-a59f-8c7fdf859d61
 
-OUTDIR = "../../certs/out/pycerts/"
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from ipaddress import ip_address
@@ -72,7 +71,7 @@ def make_ca_authority_and_server(hostname,
     with open(outdir / "ca_certificate.pem", "wb") as cert_file:
         cert_file.write(ca_certificate.public_bytes(serialization.Encoding.PEM))
 
-    logger.info("Self-signed CA certificate generated and saved.")
+    logger.info(f"Self-signed CA certificate generated and saved to {outdir}.")
 
     # Generate the server private key
     server_private_key = rsa.generate_private_key(
@@ -135,7 +134,7 @@ def make_ca_authority_and_server(hostname,
     with open(outdir / "server_certificate.pem", "wb") as cert_file:
         cert_file.write(server_certificate.public_bytes(serialization.Encoding.PEM))
 
-    logger.info(f"Server certificate for {hostname} and private key saved.")
+    logger.info(f"Server certificate for {hostname} and private key saved to {outdir}.")
 
 
 def read_ca_authority_and_server(outdir, password=None):
@@ -205,19 +204,29 @@ def make_client_certs(hostname,
 
 
 def get_conf_dir():
-    return Path.home() / ".config/gblp"
+    return Path.home() / ".config/gBLP"
+
+
+def make_all_certs(hostname, outdir = get_conf_dir()):
+    # make CA authority, make cerver certs, make client certs, 
+    # save to outdir
+    outdir = get_conf_dir()
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    make_ca_authority_and_server(hostname, outdir)
+
+    clkey, clcert, cacert = make_client_certs(hostname, outdir)
+    with open(outdir / "client_private_key.pem", "wb") as key_file:
+        key_file.write(clkey)
+    with open(outdir / "client_certificate.pem", "wb") as cert_file:
+        cert_file.write(clcert)
+    logger.info(f"Client certificate and private key saved to {outdir}.")
 
 
 if __name__ == "__main__":
     # pathlib make from home directory ~/.config/gblp/ if it does not exist
-    confdir = get_conf_dir() 
-    confdir.mkdir(parents=True, exist_ok=True)
+    outdir = get_conf_dir() 
+    outdir.mkdir(parents=True, exist_ok=True)
 
-    make_ca_authority_and_server("signaliser.com", confdir)
+    make_all_certs("signaliser.com", outdir)
 
-    clkey, clcert, cacert = make_client_certs("signaliser.com", confdir)
-    with open(confdir / "client_private_key.pem", "wb") as key_file:
-        key_file.write(clkey)
-    with open(confdir / "client_certificate.pem", "wb") as cert_file:
-        cert_file.write(clcert)
-    logger.info("Client certificate and private key saved.")

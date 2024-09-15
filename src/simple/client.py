@@ -59,6 +59,7 @@ async def run() -> None:
             certificate_chain=client_cert,
         )
         channel = grpc.aio.secure_channel(hostandport, client_credentials)
+        breakpoint()
 
     async with channel as chan:
         stub = simple_pb2_grpc.simpleServiceStub(chan)

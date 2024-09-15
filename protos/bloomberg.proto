@@ -11,7 +11,7 @@ import "google/protobuf/empty.proto";
 
 // Key management
 service KeyManager {
-  rpc keyRequest (google.protobuf.Empty) returns (KeyResponse) {}
+  rpc requestKey (KeyRequestId) returns (KeyResponse) {}
   rpc sayHello (HelloRequest) returns (stream HelloReply) {}
   rpc sum (SumRequest) returns (SumResponse) {}
 }
@@ -74,10 +74,15 @@ message HistoricalDataResponse {
   string error = 3;
 }
 
+message KeyRequestId {
+  string id = 1;
+}
+
 message KeyResponse {
-  string key = 1;
-  string cert = 2;
-  string cacert = 3;
+  bytes key = 1;
+  bytes cert = 2;
+  bytes cacert = 3;
+  string error = 4;
 }
 
 

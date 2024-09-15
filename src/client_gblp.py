@@ -24,7 +24,7 @@ import bloomberg_pb2_grpc
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
-parser.add_argument('--grpchost', default='localhost')
+parser.add_argument('--grpchost', default='signaliser.com')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--grpckeyport', default='50052')
 from pathlib import Path
@@ -37,36 +37,50 @@ args = parser.parse_args()
 
 
 async def run() -> None:
+    
+    confdir = get_conf_dir()
+    ihostandport = f"{args.grpchost}:{args.grpckeyport}"
+    ichannel = grpc.aio.insecure_channel(ihostandport) # insecure for keys
+    # now look for keys, request them and write them if not found
+    if not ((confdir / "client_certificate.pem").exists() and \
+            (confdir / "client_private_key.pem").exists() and \
+            (confdir / "ca_certificate.pem").exists()):
+        idkey = input("Certificates not found. Input ID key: ")
+        print("waiting for response from server...")
+        async with ichannel as chan:
+            istub = bloomberg_pb2_grpc.KeyManagerStub(chan)
+            try:
+                iresponse = await istub.requestKey(bloomberg_pb2.KeyRequestId(id=idkey))
+            except grpc.aio.AioRpcError as e:
+                print(f"Error: {e}")
+                return
+            # make the confdir if it does not exist already
+            confdir.mkdir(parents=True, exist_ok=True)
+            with open(confdir / "client_certificate.pem", "wb") as f:
+                f.write(iresponse.cert)
+            with open(confdir / "client_private_key.pem", "wb") as f:
+                f.write(iresponse.key)
+            with open(confdir / "ca_certificate.pem", "wb") as f:
+                f.write(iresponse.cacert)
+        print("Certificates written.")
 
-    ichannel = grpc.aio.insecure_channel(f"{args.grpchost}:{args.grpckeyport}") # insecure for keys
-    # now look for keys
-    if not ((get_conf_dir() / "client_certificate.pem").exists() and \
-            (get_conf_dir() / "client_private_key.pem").exists() and \
-            (get_conf_dir() / "ca_certificate.pem").exists()):
-        yn = input("Keys not found. Ask server? y/n <enter>: ")
-        if yn.lower() == "y":
-
-
-            
-    channel = grpc.aio.insecure_channel(f"{args.grpchost}:{args.grpcport}") # insecure for keys
-    with open(get_conf_dir() / "client_certificate.pem", "rb") as f:
-        client_cert = f.read()
-    with open(get_conf_dir() / "client_private_key.pem", "rb") as f:
-        client_key = f.read()
+    # Load client certificate and private key
+    with open(confdir / "client_certificate.pem", "rb") as f:
+        cert = f.read()
+    with open(confdir / "client_private_key.pem", "rb") as f:
+        key = f.read()
     # Load CA certificate to verify the server
-    with open(get_conf_dir() / "ca_certificate.pem", "rb") as f:
-        ca_cert = f.read()
+    with open(confdir / "ca_certificate.pem", "rb") as f:
+        cacert = f.read()
+            
     # Create SSL credentials for the client
     client_credentials = grpc.ssl_channel_credentials(
-        root_certificates=ca_cert,
-        private_key=client_key,
-        certificate_chain=client_cert,
+        root_certificates=cacert,
+        private_key=key,
+        certificate_chain=cert,
     )
-    channel = grpc.aio.secure_channel(hostandport, client_credentials)
-
     hostandport = f"{args.grpchost}:{args.grpcport}"
-
-    #async with grpc.aio.insecure_channel(hostandport) as channel:
+    channel = grpc.aio.secure_channel(hostandport, client_credentials)
 
     async with channel as chan:
         stub = bloomberg_pb2_grpc.SessionManagerStub(chan)

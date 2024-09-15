@@ -107,6 +107,7 @@ async def serve() -> None:
             require_client_auth=True,  # Require clients to provide valid certificates
         )
         server.add_secure_port(listen_addr, server_credentials) 
+        breakpoint()
 
     logging.info("Starting server on %s", listen_addr)
     await server.start()
