@@ -1,0 +1,63 @@
+{
+  "historicalDataResponse": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "securityData": {
+          "type": "object",
+          "properties": {
+            "security": {
+              "type": "string"
+            },
+            "eidData": {
+              "type": "array",
+              "items": {}
+            },
+            "sequenceNumber": {
+              "type": "integer"
+            },
+            "fieldExceptions": {
+              "type": "array",
+              "items": {}
+            },
+            "fieldData": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"  // ISO 8601 format (YYYY-MM-DD)
+                  },
+                  "PX_LAST": {
+                    "type": "number"
+                  },
+                  "PX_BID": {
+                    "type": "number"
+                  },
+                  "PX_ASK": {
+                    "type": "number"
+                  }
+                },
+                "required": ["date"],
+                "anyOf": [
+                  { "required": ["PX_LAST"] },
+                  { "required": ["PX_BID"] },
+                  { "required": ["PX_ASK"] }
+                ]
+              }
+            }
+          },
+          "required": ["security", "eidData", "sequenceNumber", "fieldExceptions", "fieldData"]
+        }
+      },
+      "required": ["securityData"]
+    }
+  },
+
+  "intradayBarResponse": {
+  }
+
+}

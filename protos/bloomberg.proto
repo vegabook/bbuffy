@@ -8,6 +8,8 @@ package bloomberg;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+//import "google/protobuf/wrappers.proto";
 
 // Key management
 service KeyManager {
@@ -58,6 +60,8 @@ message Session {
   string error = 5;
 }
 
+/////////////// Historical data ///////////////////
+
 message HistoricalDataRequest {
   Session session = 1;
   repeated string topics = 2; // securities
@@ -67,12 +71,37 @@ message HistoricalDataRequest {
   map <string, string> options = 6; // overrides
 }
 
+
+// The top-level response message
 message HistoricalDataResponse {
-  string name = 1;
-  // must have
-  google.protobuf.Struct json_data = 2; // Field to store arbitrary JSON
-  string error = 3;
+    // An array of items, each containing security data
+    repeated HistoricalDataResponseItem items = 1;
+    string error = 2;
 }
+
+// Each item contains security data
+message HistoricalDataResponseItem {
+    SecurityData security_data = 1; // Required
+}
+
+// Security data for a security
+message SecurityData {
+    string security = 1; // Required
+    repeated google.protobuf.Any eid_data = 2; // Required; items unspecified
+    int32 sequence_number = 3; // Required
+    repeated google.protobuf.Any field_exceptions = 4; // Required; items unspecified
+    repeated FieldData field_data = 5; // Required
+}
+
+// Field data for a date
+
+message FieldData {
+    google.protobuf.Timestamp date = 1; // Required
+    map<string, google.protobuf.Value> fields = 2; // Dynamic fields
+}
+
+
+/////////////// Key management ///////////////////
 
 message KeyRequestId {
   string id = 1;
@@ -84,6 +113,8 @@ message KeyResponse {
   bytes cacert = 3;
   string error = 4;
 }
+
+///////////// simple examples ///////////////////
 
 
 // examples TODO delete later
