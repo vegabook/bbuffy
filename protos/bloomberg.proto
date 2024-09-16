@@ -27,9 +27,8 @@ service SessionManager {
   // Bloomberg
   rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
-  rpc makeStream (SubscriptionList) returns (stream SubscriptionMessage) {} 
+  rpc subscribe (Session) returns (stream SubscriptionMessage) {} 
   rpc sessionInfo (Session) returns (Session) {}
-  rpc unsubscribe (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
   //rpc intradayTickRequest. maybe "tick" or "gblpTick"
@@ -66,7 +65,7 @@ message SubscriptionMessage {
 message Session {
   string name = 1;
   repeated string services = 2;
-  repeated SubscriptionList subscriptionList = 3;
+  SubscriptionList subscriptionList = 3;
   bool alive = 4;
   string error = 5;
 }
