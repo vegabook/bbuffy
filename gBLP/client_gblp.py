@@ -89,7 +89,7 @@ async def run() -> None:
     channel = grpc.aio.secure_channel(hostandport, client_credentials)
 
     async with channel as chan:
-        stub = bloomberg_pb2_grpc.SessionManagerStub(chan)
+        stub = bloomberg_pb2_grpc.SessionsManagerStub(chan)
 
         # Read from an async generator
         async for response in stub.sayHello(
@@ -132,23 +132,26 @@ async def run() -> None:
         print(f"Requesting historical data: {hreq}")
         hdata = await stub.historicalDataRequest(hreq)
         print(hdata)
-        # and again
-        # wait 5 seconds
-        time.sleep(5)
-        sst = protoTimestamp()
-        sst.FromDatetime(dt.datetime(2014, 1, 1))
-        est = protoTimestamp()
-        est.FromDatetime(dt.datetime(2023, 11, 30))
-        hreq2 = bloomberg_pb2.HistoricalDataRequest(
-            session=session,
-            topics=["NVDA US Equity", "AMD US Equity", "R2035 Govt"],
-            fields=["LAST_PRICE", "YLT YTM MID"],
-            start=sst,
-            end=est
-        )
-        print(f"Requesting historical data: {hreq2}")
-        hdata2 = await stub.historicalDataRequest(hreq2)
-        print(hdata2)
+
+        sub = bloomberg_pb2.SubscriptionList(
+            topics = [bloomberg_pb2.Topic(name="EURUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
+                                          type = "TICKER", interval = 2),
+                      bloomberg_pb2.Topic(name="USDZAR Curncy", fields=["LAST_PRICE", "LAST_TRADE_ACTUAL"],
+                                          type = "TICKER", interval = 4)])
+
+        print(f"Subscribing to topics: {sub}")
+        session.subscriptionList.CopyFrom(sub)
+
+        async def session_generator(session):
+            yield session  # Send the session object to the server
+
+        stream = stub.subscribe(session_generator(session))
+        async for response in stream:
+            print(f"Received: {response}")
+
+
+
+
         closedSession = await stub.closeSession(session)
         print(f"Closed session: {closedSession}")
 

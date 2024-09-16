@@ -192,7 +192,7 @@ class KeyManager(object):
             _registered_method=True)
 
 
-class SessionManagerStub(object):
+class SessionsManagerStub(object):
     """Bloomberg API session management
     """
 
@@ -203,53 +203,48 @@ class SessionManagerStub(object):
             channel: A grpc.Channel.
         """
         self.sayHello = channel.unary_stream(
-                '/bloomberg.SessionManager/sayHello',
+                '/bloomberg.SessionsManager/sayHello',
                 request_serializer=bloomberg__pb2.HelloRequest.SerializeToString,
                 response_deserializer=bloomberg__pb2.HelloReply.FromString,
                 _registered_method=True)
         self.sum = channel.unary_unary(
-                '/bloomberg.SessionManager/sum',
+                '/bloomberg.SessionsManager/sum',
                 request_serializer=bloomberg__pb2.SumRequest.SerializeToString,
                 response_deserializer=bloomberg__pb2.SumResponse.FromString,
                 _registered_method=True)
         self.getDefaultOptions = channel.unary_unary(
-                '/bloomberg.SessionManager/getDefaultOptions',
+                '/bloomberg.SessionsManager/getDefaultOptions',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=bloomberg__pb2.SessionOptions.FromString,
                 _registered_method=True)
         self.openSession = channel.unary_unary(
-                '/bloomberg.SessionManager/openSession',
+                '/bloomberg.SessionsManager/openSession',
                 request_serializer=bloomberg__pb2.SessionOptions.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
-        self.makeStream = channel.unary_stream(
-                '/bloomberg.SessionManager/makeStream',
-                request_serializer=bloomberg__pb2.SubscriptionList.SerializeToString,
-                response_deserializer=bloomberg__pb2.SubscriptionMessage.FromString,
+        self.subscribe = channel.stream_stream(
+                '/bloomberg.SessionsManager/subscribe',
+                request_serializer=bloomberg__pb2.Session.SerializeToString,
+                response_deserializer=bloomberg__pb2.SubscriptionData.FromString,
                 _registered_method=True)
         self.sessionInfo = channel.unary_unary(
-                '/bloomberg.SessionManager/sessionInfo',
-                request_serializer=bloomberg__pb2.Session.SerializeToString,
-                response_deserializer=bloomberg__pb2.Session.FromString,
-                _registered_method=True)
-        self.unsubscribe = channel.unary_unary(
-                '/bloomberg.SessionManager/unsubscribe',
+                '/bloomberg.SessionsManager/sessionInfo',
                 request_serializer=bloomberg__pb2.Session.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
         self.closeSession = channel.unary_unary(
-                '/bloomberg.SessionManager/closeSession',
+                '/bloomberg.SessionsManager/closeSession',
                 request_serializer=bloomberg__pb2.Session.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
         self.historicalDataRequest = channel.unary_unary(
-                '/bloomberg.SessionManager/historicalDataRequest',
+                '/bloomberg.SessionsManager/historicalDataRequest',
                 request_serializer=bloomberg__pb2.HistoricalDataRequest.SerializeToString,
                 response_deserializer=bloomberg__pb2.HistoricalDataResponse.FromString,
                 _registered_method=True)
 
 
-class SessionManagerServicer(object):
+class SessionsManagerServicer(object):
     """Bloomberg API session management
     """
 
@@ -279,19 +274,13 @@ class SessionManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def makeStream(self, request, context):
+    def subscribe(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def sessionInfo(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def unsubscribe(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -310,7 +299,7 @@ class SessionManagerServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_SessionManagerServicer_to_server(servicer, server):
+def add_SessionsManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'sayHello': grpc.unary_stream_rpc_method_handler(
                     servicer.sayHello,
@@ -332,18 +321,13 @@ def add_SessionManagerServicer_to_server(servicer, server):
                     request_deserializer=bloomberg__pb2.SessionOptions.FromString,
                     response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
-            'makeStream': grpc.unary_stream_rpc_method_handler(
-                    servicer.makeStream,
-                    request_deserializer=bloomberg__pb2.SubscriptionList.FromString,
-                    response_serializer=bloomberg__pb2.SubscriptionMessage.SerializeToString,
+            'subscribe': grpc.stream_stream_rpc_method_handler(
+                    servicer.subscribe,
+                    request_deserializer=bloomberg__pb2.Session.FromString,
+                    response_serializer=bloomberg__pb2.SubscriptionData.SerializeToString,
             ),
             'sessionInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.sessionInfo,
-                    request_deserializer=bloomberg__pb2.Session.FromString,
-                    response_serializer=bloomberg__pb2.Session.SerializeToString,
-            ),
-            'unsubscribe': grpc.unary_unary_rpc_method_handler(
-                    servicer.unsubscribe,
                     request_deserializer=bloomberg__pb2.Session.FromString,
                     response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
@@ -359,13 +343,13 @@ def add_SessionManagerServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'bloomberg.SessionManager', rpc_method_handlers)
+            'bloomberg.SessionsManager', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('bloomberg.SessionManager', rpc_method_handlers)
+    server.add_registered_method_handlers('bloomberg.SessionsManager', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class SessionManager(object):
+class SessionsManager(object):
     """Bloomberg API session management
     """
 
@@ -383,7 +367,7 @@ class SessionManager(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/bloomberg.SessionManager/sayHello',
+            '/bloomberg.SessionsManager/sayHello',
             bloomberg__pb2.HelloRequest.SerializeToString,
             bloomberg__pb2.HelloReply.FromString,
             options,
@@ -410,7 +394,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/sum',
+            '/bloomberg.SessionsManager/sum',
             bloomberg__pb2.SumRequest.SerializeToString,
             bloomberg__pb2.SumResponse.FromString,
             options,
@@ -437,7 +421,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/getDefaultOptions',
+            '/bloomberg.SessionsManager/getDefaultOptions',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             bloomberg__pb2.SessionOptions.FromString,
             options,
@@ -464,7 +448,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/openSession',
+            '/bloomberg.SessionsManager/openSession',
             bloomberg__pb2.SessionOptions.SerializeToString,
             bloomberg__pb2.Session.FromString,
             options,
@@ -478,7 +462,7 @@ class SessionManager(object):
             _registered_method=True)
 
     @staticmethod
-    def makeStream(request,
+    def subscribe(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -488,12 +472,12 @@ class SessionManager(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(
-            request,
+        return grpc.experimental.stream_stream(
+            request_iterator,
             target,
-            '/bloomberg.SessionManager/makeStream',
-            bloomberg__pb2.SubscriptionList.SerializeToString,
-            bloomberg__pb2.SubscriptionMessage.FromString,
+            '/bloomberg.SessionsManager/subscribe',
+            bloomberg__pb2.Session.SerializeToString,
+            bloomberg__pb2.SubscriptionData.FromString,
             options,
             channel_credentials,
             insecure,
@@ -518,34 +502,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/sessionInfo',
-            bloomberg__pb2.Session.SerializeToString,
-            bloomberg__pb2.Session.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def unsubscribe(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/bloomberg.SessionManager/unsubscribe',
+            '/bloomberg.SessionsManager/sessionInfo',
             bloomberg__pb2.Session.SerializeToString,
             bloomberg__pb2.Session.FromString,
             options,
@@ -572,7 +529,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/closeSession',
+            '/bloomberg.SessionsManager/closeSession',
             bloomberg__pb2.Session.SerializeToString,
             bloomberg__pb2.Session.FromString,
             options,
@@ -599,7 +556,7 @@ class SessionManager(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bloomberg.SessionManager/historicalDataRequest',
+            '/bloomberg.SessionsManager/historicalDataRequest',
             bloomberg__pb2.HistoricalDataRequest.SerializeToString,
             bloomberg__pb2.HistoricalDataResponse.FromString,
             options,

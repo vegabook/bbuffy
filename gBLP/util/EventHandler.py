@@ -1,6 +1,14 @@
 # colorscheme greenvision dark
 
 import blpapi
+import datetime as dt
+import time
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+from colorama import Fore, Back, Style, init as colinit; colinit()
+
 
 RESP_INFO = "info"
 RESP_REF = "refdata"
@@ -9,12 +17,7 @@ RESP_BAR = "bardata"
 RESP_STATUS = "status"
 RESP_ERROR = "error"
 RESP_ACK = "ack"
-
-import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
+DEFAULT_FIELDS = ["LAST_PRICE", "BLOOMBERG_SEND_TIME_RT", "BID", "ASK"]
 class EventHandler(object):
 
     def __init__(self, parent):
@@ -38,15 +41,15 @@ class EventHandler(object):
             pymsg = msg.toPy()
             cid = msg.correlationId().value()
             if msg.messageType() == blpapi.Names.SUBSCRIPTION_FAILURE:
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
+                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_TERMINATED:
                 stopevent.set() # DEBUG
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
+                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_STARTED:
                 correl = msg.correlationId().value()
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
+                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
             else:
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), topic, pymsg))
+                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
             #self.parent.correlators[cid]["queue"].put(sendmsg)
 
     def searchMsg(self, msg, fields):
@@ -76,8 +79,8 @@ class EventHandler(object):
         timestamp = self.getTimeStamp()
         timestampdt = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
         for msg in event:
-            fulltopic = msg.correlationId().value()
-            topic = fulltopic.split("/")[-1] # just ticker
+            print(Fore.GREEN, msg, Style.RESET_ALL)
+            topic = msg.correlationId().value()
             msgtype = msg.messageType()
             # bars --->
             if msgtype in (blpapi.Name("MarketBarUpdate"),
@@ -86,6 +89,7 @@ class EventHandler(object):
                            blpapi.Name("MarketBarIntervalEnd")):
                 sendmsg = (RESP_BAR, self.makeBarMessage(msg, str(msgtype), 
                                                           topic, interval = 1))
+                print(Fore.RED, Style.BRIGHT, sendmsg, Style.RESET_ALL)
                 #self.parent.correlators[cid]["queue"].put(sendmsg)
 
             # subscription --->
@@ -95,6 +99,8 @@ class EventHandler(object):
                        {"timestamp": timestampdt, 
                        "topic": topic,
                        "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
+                print(Fore.CYAN, sendmsg, Style.RESET_ALL)
+
                 #self.parent.correlators[cid]["queue"].put(sendmsg)
 
             # something else --->
@@ -126,6 +132,7 @@ class EventHandler(object):
                 case blpapi.Event.SUBSCRIPTION_DATA:
                     self.processSubscriptionDataEvent(event)
                 case blpapi.Event.SUBSCRIPTION_STATUS:
+                    print(Fore.YELLOW + "Subscription status", Style.RESET_ALL)
                     self.processSubscriptionStatus(event)
                 case _:
                     self.processMiscEvents(event)

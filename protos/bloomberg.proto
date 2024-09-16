@@ -19,7 +19,7 @@ service KeyManager {
 }
 
 // Bloomberg API session management
-service SessionManager {
+service SessionsManager {
   // basic examples TODO delete later
   rpc sayHello (HelloRequest) returns (stream HelloReply) {}
   rpc sum (SumRequest) returns (SumResponse) {}
@@ -27,7 +27,7 @@ service SessionManager {
   // Bloomberg
   rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
-  rpc subscribe (Session) returns (stream SubscriptionMessage) {} 
+  rpc subscribe (stream Session) returns (stream SubscriptionData) {} 
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
@@ -46,20 +46,32 @@ message SessionOptions {
   string error = 4;
 }
 
-message SubscriptionList {
+
+/////////////// Subscription /////////////////
+
+message Topic {
+  enum topicType {
+    UNKNOWN = 0;
+    TICKER = 1;
+    SEDOL1 = 2;
+    CUSIP = 3;
+  }
   string name = 1;
-  repeated string topics = 2;
+  topicType type = 2; 
   repeated string fields = 3;
   int32 interval = 4;
 }
 
-message SubscriptionMessage {
+message SubscriptionList {
+  repeated Topic topics = 1;
+}
+
+message SubscriptionData {
   string topic = 1;                          
   google.protobuf.Timestamp timestamp = 2;   
   // Dynamic fields with arbitrary names and types }
   map<string, google.protobuf.Value> fields = 3; 
 }
-
 
 
 message Session {
@@ -70,7 +82,7 @@ message Session {
   string error = 5;
 }
 
-/////////////// Historical data ///////////////////
+/////////////// Historical data //////////////////
 
 message HistoricalDataRequest {
   Session session = 1;
@@ -111,7 +123,7 @@ message FieldData {
 }
 
 
-/////////////// Key management ///////////////////
+/////////////// Key management //////////////////
 
 message KeyRequestId {
   string id = 1;
@@ -124,7 +136,7 @@ message KeyResponse {
   string error = 4;
 }
 
-///////////// simple examples ///////////////////
+///////////// simple examples //////////////////
 
 
 // examples TODO delete later

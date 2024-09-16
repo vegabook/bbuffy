@@ -36,9 +36,11 @@ from bloomberg_pb2 import HistoricalDataRequest
 from bloomberg_pb2 import KeyRequestId, KeyResponse
 from bloomberg_pb2 import HistoricalDataResponse
 from bloomberg_pb2 import SubscriptionList
+from bloomberg_pb2 import SubscriptionData
+from bloomberg_pb2 import Topic
 
-from bloomberg_pb2_grpc import SessionManagerServicer, KeyManagerServicer
-from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server, \
+from bloomberg_pb2_grpc import SessionsManagerServicer, KeyManagerServicer
+from bloomberg_pb2_grpc import add_SessionsManagerServicer_to_server, \
     add_KeyManagerServicer_to_server
 
 from responseParsers import buildHistoricalDataResponse
@@ -156,6 +158,7 @@ class SessionRunner(object):
                               "CategorizedFieldSearchRequest": "//blp/apiflds",
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
+        self.subscriptionList = SubscriptionList()
 
 
     def _getService(self, serviceReq: str) -> bool:
@@ -163,30 +166,34 @@ class SessionRunner(object):
         if not self.session:
             error = "Session not open"
             logger.error(error)
-            return HistoricalDataResponse(error=error)
+            return (False, error)
         if not self.servicesOpen.get(serviceReq):
             if not self.session.openService(self.servicesAvail[serviceReq]):
                 error = "Failed to open service HistoricalDataRequest"
                 logger.error(error)
-                return HistoricalDataResponse(error=error)
+                return(False, error)
             else:
                 self.servicesOpen[serviceReq] = self.servicesAvail[serviceReq]
                 logger.info("Opened service HistoricalDataRequest")
         logger.info(f"Service {serviceReq} is open via {self.servicesOpen[serviceReq]}")
-        return self.servicesOpen[serviceReq]
+        return (True, self.servicesOpen[serviceReq])
 
 
     def _createEmptyRequest(self, serviceReq: str) -> blpapi.Request:
-        service = self._getService(serviceReq)
+        success, service = self._getService(serviceReq)
+        if not success:
+            return (False, service)
         request = self.session.getService(service).createRequest(serviceReq)
-        return request
+        return (True, request)
 
 
-    def grpcRepresentation(self) -> Session:
+    def grpcRepresentation(self, error = "") -> Session:
         """ return the session representation in gRPC terms """
         return Session(name=self.name, 
                        services=self.servicesAvail.keys(), 
-                       alive=self.alive)
+                       alive=self.alive, 
+                       subscriptionList=self.subscriptionList,
+                       error=error)
                        # dummy subscription list TODO this should be real
 
     async def open(self):
@@ -198,7 +205,7 @@ class SessionRunner(object):
         # mulithreaded dispather. not strictly needed
         self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) # threaded dispatcher
         self.eventDispatcher.start()
-        # queue for our event handler to return messages back to this class
+        # queue for our event handler to return messages back te this class
         handler = EventHandler(parent = self)
         # now actually open the session
         self.session = blpapi.Session(sessionOptions, 
@@ -223,7 +230,9 @@ class SessionRunner(object):
     async def historicalDataRequest(self, request: HistoricalDataRequest) -> HistoricalDataResponse:
         """ request historical data """
         logger.info(f"Requesting historical data {request}")
-        bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
+        success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
+        if not success:
+            return HistoricalDataResponse(error=bbgRequest)
         #self._sendInfo("HistoricalDataRequest", bbgRequest)
         logger.info(f"setting securities {request.topics}")
         dtstart = request.start.ToDatetime().strftime("%Y%m%d")
@@ -236,8 +245,7 @@ class SessionRunner(object):
         # create a random 32-character string as the correlationId
         corrString = ''.join(random.choices(string.ascii_uppercase + string.digits, k=32))
         correlationId = blpapi.CorrelationId(corrString)
-        #future = asyncio.get_event_loop().create_future()
-        # queue for this request
+        # queue for this request, with correlator so event handler can match it
         q = queue.Queue()
         self.correlators[corrString] = {"request": request, "queue": q}
         self.session.sendRequest(bbgRequest, correlationId=correlationId)
@@ -252,7 +260,51 @@ class SessionRunner(object):
                 break
         # remove self correlators
         del self.correlators[corrString]
+        print(messageList)
         return messageList
+
+    # ------------ subscriptions -------------------
+
+
+    async def subscribe(self, session):
+        # make sure the service is open
+        success, service = self._getService("Subscribe")
+        if not success:
+            return self.grpcRepresentation(error=service)
+        # create the subscription list
+        subs = []
+        bbgsublist = blpapi.SubscriptionList()
+        for topic in session.subscriptionList.topics:
+            topicTypeName = Topic.topicType.Name(topic.type)
+            substring = f"{service}/{topicTypeName}/{topic.name}"
+            if topic.fields == []:
+                fields = ["LAST_PRICE"]
+            if topic.interval is None:
+                intervalstr = "interval=1"
+            else:
+                intervalstr = f"interval={int(topic.interval)}"
+            cid = blpapi.CorrelationId(topic.name)
+            bbgsublist.add(substring, topic.fields, intervalstr, cid)
+
+        self.session.subscribe(bbgsublist)
+        breakpoint()
+            
+                
+        #bbgSubscriptions = blpapi.SubscriptionList()
+        #correls = {}
+        #fields_str = ",".join(fields)
+        #options_str = "&".join([f"{k.replace(' ', '_')}={v}" for k, v in options.items()])
+        #print(f"{options_str=}")
+        #print(f"{fields_str=}")
+        #for ticker in tickers:
+        #    correlid = blpapi.CorrelationId(ticker)
+        #    bbGsubscriptions.add(ticker, "LAST_PRICE", "interval=1", correlid)
+        #    correls[ticker] = correlid
+        #breakpoint()
+            
+
+
+
 
     async def _sendInfo(self, command, bbgRequest):
         """ sends back structure information about the request """
@@ -263,7 +315,7 @@ class SessionRunner(object):
 
 
 
-class SessionManager(SessionManagerServicer):
+class SessionsManager(SessionsManagerServicer):
     # implements all the gRPC methods for the session manager
     # and communicates with the SessionRunner(s)
 
@@ -326,11 +378,11 @@ class SessionManager(SessionManagerServicer):
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return HistoricalDataResponse(error="Session not found")
 
-    async def makeStream(self, request: SubscriptionList , context: grpc.aio.ServicerContext):
-
-        pass
-
-
+    async def subscribe(self, request_iterator, context: grpc.aio.ServicerContext):
+        async for r in request_iterator:
+            session = self.sessions.get(r.name)
+            sub = await session.subscribe(r)
+            yield SubscriptionData(topic = "yadaaa")
 
 
 
@@ -374,7 +426,7 @@ async def serveSession() -> None:
 
     listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
     sessionServer = grpc.aio.server()
-    add_SessionManagerServicer_to_server(SessionManager(), sessionServer)
+    add_SessionsManagerServicer_to_server(SessionsManager(), sessionServer)
 
     # first check if the certs are there
     confdir = get_conf_dir()
