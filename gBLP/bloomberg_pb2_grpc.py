@@ -222,10 +222,10 @@ class SessionManagerStub(object):
                 request_serializer=bloomberg__pb2.SessionOptions.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
-        self.subscribe = channel.unary_unary(
-                '/bloomberg.SessionManager/subscribe',
-                request_serializer=bloomberg__pb2.Session.SerializeToString,
-                response_deserializer=bloomberg__pb2.Session.FromString,
+        self.makeStream = channel.unary_stream(
+                '/bloomberg.SessionManager/makeStream',
+                request_serializer=bloomberg__pb2.SubscriptionList.SerializeToString,
+                response_deserializer=bloomberg__pb2.SubscriptionMessage.FromString,
                 _registered_method=True)
         self.sessionInfo = channel.unary_unary(
                 '/bloomberg.SessionManager/sessionInfo',
@@ -279,7 +279,7 @@ class SessionManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def subscribe(self, request, context):
+    def makeStream(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -332,10 +332,10 @@ def add_SessionManagerServicer_to_server(servicer, server):
                     request_deserializer=bloomberg__pb2.SessionOptions.FromString,
                     response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
-            'subscribe': grpc.unary_unary_rpc_method_handler(
-                    servicer.subscribe,
-                    request_deserializer=bloomberg__pb2.Session.FromString,
-                    response_serializer=bloomberg__pb2.Session.SerializeToString,
+            'makeStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.makeStream,
+                    request_deserializer=bloomberg__pb2.SubscriptionList.FromString,
+                    response_serializer=bloomberg__pb2.SubscriptionMessage.SerializeToString,
             ),
             'sessionInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.sessionInfo,
@@ -478,7 +478,7 @@ class SessionManager(object):
             _registered_method=True)
 
     @staticmethod
-    def subscribe(request,
+    def makeStream(request,
             target,
             options=(),
             channel_credentials=None,
@@ -488,12 +488,12 @@ class SessionManager(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(
+        return grpc.experimental.unary_stream(
             request,
             target,
-            '/bloomberg.SessionManager/subscribe',
-            bloomberg__pb2.Session.SerializeToString,
-            bloomberg__pb2.Session.FromString,
+            '/bloomberg.SessionManager/makeStream',
+            bloomberg__pb2.SubscriptionList.SerializeToString,
+            bloomberg__pb2.SubscriptionMessage.FromString,
             options,
             channel_credentials,
             insecure,

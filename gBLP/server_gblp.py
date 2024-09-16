@@ -35,9 +35,11 @@ from bloomberg_pb2 import SessionOptions
 from bloomberg_pb2 import HistoricalDataRequest 
 from bloomberg_pb2 import KeyRequestId, KeyResponse
 from bloomberg_pb2 import HistoricalDataResponse
+from bloomberg_pb2 import SubscriptionList
 
 from bloomberg_pb2_grpc import SessionManagerServicer, KeyManagerServicer
-from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server, add_KeyManagerServicer_to_server
+from bloomberg_pb2_grpc import add_SessionManagerServicer_to_server, \
+    add_KeyManagerServicer_to_server
 
 from responseParsers import buildHistoricalDataResponse
 
@@ -323,6 +325,14 @@ class SessionManager(SessionManagerServicer):
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return HistoricalDataResponse(error="Session not found")
+
+    async def makeStream(self, request: SubscriptionList , context: grpc.aio.ServicerContext):
+
+        pass
+
+
+
+
 
 
 class KeyManager(KeyManagerServicer):
