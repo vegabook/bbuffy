@@ -290,18 +290,6 @@ class SessionRunner(object):
         breakpoint()
             
                 
-        #bbgSubscriptions = blpapi.SubscriptionList()
-        #correls = {}
-        #fields_str = ",".join(fields)
-        #options_str = "&".join([f"{k.replace(' ', '_')}={v}" for k, v in options.items()])
-        #print(f"{options_str=}")
-        #print(f"{fields_str=}")
-        #for ticker in tickers:
-        #    correlid = blpapi.CorrelationId(ticker)
-        #    bbGsubscriptions.add(ticker, "LAST_PRICE", "interval=1", correlid)
-        #    correls[ticker] = correlid
-        #breakpoint()
-            
 
 
 
