@@ -20,14 +20,10 @@ service KeyManager {
 
 // Bloomberg API session management
 service SessionsManager {
-  // basic examples TODO delete later
-  rpc sayHello (HelloRequest) returns (stream HelloReply) {}
-  rpc sum (SumRequest) returns (SumResponse) {}
 
-  // Bloomberg
   rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
-  rpc subscribe (stream Session) returns (stream SubscriptionData) {} 
+  rpc subscribeStream (stream Session) returns (stream SubscriptionData) {} 
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
@@ -71,6 +67,7 @@ message SubscriptionData {
   google.protobuf.Timestamp timestamp = 2;   
   // Dynamic fields with arbitrary names and types }
   map<string, google.protobuf.Value> fields = 3; 
+  string error = 4;
 }
 
 
@@ -137,27 +134,5 @@ message KeyResponse {
 }
 
 ///////////// simple examples //////////////////
-
-
-// examples TODO delete later
-
-message HelloRequest {
-  string name = 1;
-  string num_greetings = 2;
-}
-
-// A response message containing a greeting
-message HelloReply {
-  string message = 1;
-}
-
-message SumRequest {
-  int32 num1 = 1;
-  int32 num2 = 2;
-}
-
-message SumResponse {
-  int32 result = 1;
-}
 
 

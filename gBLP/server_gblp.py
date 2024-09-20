@@ -159,6 +159,7 @@ class SessionRunner(object):
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
         self.subscriptionList = SubscriptionList()
+        self.subq = queue.Queue()
 
 
     def _getService(self, serviceReq: str) -> bool:
@@ -265,8 +266,7 @@ class SessionRunner(object):
 
     # ------------ subscriptions -------------------
 
-
-    async def subscribe(self, session):
+    async def subscribe(self, session: SubscriptionList):
         # make sure the service is open
         success, service = self._getService("Subscribe")
         if not success:
@@ -287,12 +287,8 @@ class SessionRunner(object):
             bbgsublist.add(substring, topic.fields, intervalstr, cid)
 
         self.session.subscribe(bbgsublist)
-        breakpoint()
             
                 
-
-
-
 
     async def _sendInfo(self, command, bbgRequest):
         """ sends back structure information about the request """
@@ -309,24 +305,9 @@ class SessionsManager(SessionsManagerServicer):
 
     def __init__(self):
         self.my_number = 0
-        self.sessions = dict()
-        #asyncio.create_task(self.do_stuff_regularly())
-
-    async def do_stuff_regularly(self):
-        while True:
-            await asyncio.sleep(1)
-            self.my_number -= 1
-            print(f"my_number: {self.my_number}")
-
-    async def sayHello(self, request: HelloRequest, context: grpc.aio.ServicerContext) -> HelloReply:
-        logging.info("Serving sayHello request %s", request)
-        for i in range(self.my_number, self.my_number + NUMBER_OF_REPLY):
-            yield HelloReply(message=f"Hello number {i}, {request.name}!")
-        self.my_number += NUMBER_OF_REPLY
-
-    async def sum(self, request: SumRequest, context: grpc.aio.ServicerContext) -> SumResponse:
-        logging.info("Serving sum request %s", request)
-        return SumResponse(result=request.num1 + request.num2)
+        self.sessions = dict() # the seesions
+        self.subquees = dict()
+        self.sublisteners = dict()
 
     async def openSession(self, options: SessionOptions, 
                           context: grpc.aio.ServicerContext) -> Session:
@@ -366,7 +347,15 @@ class SessionsManager(SessionsManagerServicer):
             context.set_code(grpc.StatusCode.NOT_FOUND)
             return HistoricalDataResponse(error="Session not found")
 
-    async def subscribe(self, request_iterator, context: grpc.aio.ServicerContext):
+    async def subscribeStream(self, request_iterator, context: grpc.aio.ServicerContext):
+
+        # TODO Maybe all this crap is supposed to be in the sessionRunner??
+
+
+        # start the response collector (example follows)
+        other_task_coroutine = asyncio.create_task(other_task())
+
+        # now listen for new subscriptions
         async for r in request_iterator:
             session = self.sessions.get(r.name)
             sub = await session.subscribe(r)
@@ -410,7 +399,7 @@ class KeyManager(KeyManagerServicer):
             return KeyResponse(error="Request denied")
 
 
-async def serveSession() -> None:
+async def serveSessions() -> None:
 
     listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
     sessionServer = grpc.aio.server()
@@ -460,7 +449,7 @@ async def keySession() -> None:
     await keyServer.wait_for_termination()
 
 async def main():
-    await asyncio.gather(serveSession(), keySession())
+    await asyncio.gather(serveSessions(), keySession())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
