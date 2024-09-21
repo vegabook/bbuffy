@@ -18,6 +18,7 @@ RESP_STATUS = "status"
 RESP_ERROR = "error"
 RESP_ACK = "ack"
 DEFAULT_FIELDS = ["LAST_PRICE", "BLOOMBERG_SEND_TIME_RT", "BID", "ASK"]
+
 class EventHandler(object):
 
     def __init__(self, parent):
@@ -79,7 +80,6 @@ class EventHandler(object):
         timestamp = self.getTimeStamp()
         timestampdt = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
         for msg in event:
-            print(Fore.GREEN, msg, Style.RESET_ALL)
             topic = msg.correlationId().value()
             msgtype = msg.messageType()
             # bars --->
@@ -99,9 +99,7 @@ class EventHandler(object):
                        {"timestamp": timestampdt, 
                        "topic": topic,
                        "prices": self.searchMsg(msg, DEFAULT_FIELDS)})
-                print(Fore.CYAN, sendmsg, Style.RESET_ALL)
-
-                #self.parent.correlators[cid]["queue"].put(sendmsg)
+                self.parent.subq.put(sendmsg)
 
             # something else --->
             else:

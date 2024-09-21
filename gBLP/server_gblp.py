@@ -26,28 +26,28 @@ import queue
 import blpapi
 
 import grpc
-from bloomberg_pb2 import HelloReply
-from bloomberg_pb2 import HelloRequest
-from bloomberg_pb2 import SumRequest
-from bloomberg_pb2 import SumResponse 
 from bloomberg_pb2 import Session
 from bloomberg_pb2 import SessionOptions
 from bloomberg_pb2 import HistoricalDataRequest 
 from bloomberg_pb2 import KeyRequestId, KeyResponse
 from bloomberg_pb2 import HistoricalDataResponse
 from bloomberg_pb2 import SubscriptionList
-from bloomberg_pb2 import SubscriptionData
+from bloomberg_pb2 import SubscriptionDataResponse
 from bloomberg_pb2 import Topic
 
 from bloomberg_pb2_grpc import SessionsManagerServicer, KeyManagerServicer
 from bloomberg_pb2_grpc import add_SessionsManagerServicer_to_server, \
     add_KeyManagerServicer_to_server
 
-from responseParsers import buildHistoricalDataResponse
+from responseParsers import (
+    buildHistoricalDataResponse, 
+    buildSubscriptionDataResponse
+)
 
 from google.protobuf.struct_pb2 import Struct
 
 from argparse import ArgumentParser, RawTextHelpFormatter
+
 from pathlib import Path
 
 from util.SubscriptionOptions import \
@@ -59,10 +59,8 @@ from util.ConnectionAndAuthOptions import \
 from util.EventHandler import EventHandler, RESP_INFO, RESP_REF, RESP_SUB, \
     RESP_BAR, RESP_STATUS, RESP_ERROR, RESP_ACK
 
-
 from util.certMaker import get_conf_dir, make_client_certs, make_all_certs
 from cryptography.hazmat.primitives import serialization, hashes
-
 
 from colorama import Fore, Back, Style, init as colinit
 colinit()
@@ -127,7 +125,93 @@ def parseCmdLine():
 globalOptions = parseCmdLine()
 
 
-# -------------------- session handler ----------------------
+# ----------------- keys manager for mTLS ----------------------
+
+class KeyManager(KeyManagerServicer):
+    # responds on an insecure port with client certificates
+    # but only if authorised by the server. 
+
+    def __init__(self):
+        pass
+
+    async def input_timeout(self, prompt, timeout):
+        # Run the blocking input() function in a separate thread
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(input, prompt), 
+                                          timeout=timeout)
+        except asyncio.TimeoutError:
+            return None 
+
+    async def requestKey(self, 
+                         request: KeyRequestId, 
+                         context: grpc.aio.ServicerContext) -> KeyResponse:
+        # TODO here you gotta ask if you want to grant the request
+        logging.info("Serving keyRequest request %s", request)
+        accept = await self.input_timeout((f"Received request from {context.peer()}"
+                        f" with id {request.id}. Accept? (y/n) "), 5)
+        if accept is None:
+            context.abort(grpc.StatusCode.DEADLINE_EXCEEDED, "Request timed out")
+        if accept.lower() == "y":
+            key, cert, cacert = make_client_certs(globalOptions.grpchost, get_conf_dir())
+            bcacert = cacert.public_bytes(serialization.Encoding.PEM)
+            logger.info(f"Key request granted for {request.id} and {context.peer()}")
+            return KeyResponse(key=key, cert=cert, cacert=bcacert, error = "")
+        else:
+            context.abort(grpc.StatusCode.PERMISSION_DENIED, "Request denied")
+
+
+async def serveSessions() -> None:
+
+    listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
+    sessionServer = grpc.aio.server()
+    add_SessionsManagerServicer_to_server(SessionsManager(), sessionServer)
+
+    # first check if the certs are there
+    confdir = get_conf_dir()
+    if not ((confdir / "server_certificate.pem").exists() and \
+            (confdir / "server_private_key.pem").exists() and \
+            (confdir / "ca_certificate.pem").exists()):
+        yn = input("Certificates not found. Make them? (y/n) ")
+        if yn.lower() == "y":
+            make_all_certs(str(globalOptions.grpchost), confdir)
+        else:
+            print("Exiting.")
+
+
+    # Load server's certificate and private key
+    with open(confdir / "server_certificate.pem", "rb") as f:
+        serverCert = f.read()
+    with open(confdir / "server_private_key.pem", "rb") as f:
+        serverKey = f.read()
+    # Load CA certificate to verify clients
+    with open(confdir / "ca_certificate.pem", "rb") as f:
+        CAcert = f.read()
+
+
+    serverCredentials = grpc.ssl_server_credentials(
+        [(serverKey, serverCert)],
+        root_certificates=CAcert,
+        require_client_auth=True,  # Require clients to provide valid certificates
+    )
+    sessionServer.add_secure_port(listenAddr, serverCredentials) 
+    logging.info(f"Starting session server on {listenAddr}")
+    await sessionServer.start()
+    await sessionServer.wait_for_termination()
+
+
+async def keySession() -> None:
+
+    keyListenAddr = f"{globalOptions.grpchost}:{globalOptions.grpckeyport}"
+    keyServer = grpc.aio.server()
+    add_KeyManagerServicer_to_server(KeyManager(), keyServer)
+    keyServer.add_insecure_port(keyListenAddr) # this listens without credentials
+    logging.info(f"Starting key server on {keyListenAddr}")
+    await keyServer.start()
+    await keyServer.wait_for_termination()
+
+
+
+# -------------------- individual session handler ----------------------
 
 class SessionRunner(object):
     def __init__(self, options: SessionOptions):
@@ -193,8 +277,7 @@ class SessionRunner(object):
         return Session(name=self.name, 
                        services=self.servicesAvail.keys(), 
                        alive=self.alive, 
-                       subscriptionList=self.subscriptionList,
-                       error=error)
+                       subscriptionList=self.subscriptionList)
                        # dummy subscription list TODO this should be real
 
     async def open(self):
@@ -204,7 +287,7 @@ class SessionRunner(object):
         sessionOptions.setMaxEventQueueSize(self.maxEventQueueSize)
         sessionOptions.setSessionName(self.name)
         # mulithreaded dispather. not strictly needed
-        self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=3) # threaded dispatcher
+        self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=2) # threaded dispatcher
         self.eventDispatcher.start()
         # queue for our event handler to return messages back te this class
         handler = EventHandler(parent = self)
@@ -228,7 +311,7 @@ class SessionRunner(object):
         self.alive = False
         return self.grpcRepresentation()
 
-    async def historicalDataRequest(self, request: HistoricalDataRequest) -> HistoricalDataResponse:
+    async def historicalDataRequest(self, request: HistoricalDataRequest) -> list:
         """ request historical data """
         logger.info(f"Requesting historical data {request}")
         success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
@@ -261,12 +344,11 @@ class SessionRunner(object):
                 break
         # remove self correlators
         del self.correlators[corrString]
-        print(messageList)
         return messageList
 
     # ------------ subscriptions -------------------
 
-    async def subscribe(self, session: SubscriptionList):
+    async def subscribe(self, session: Session):
         # make sure the service is open
         success, service = self._getService("Subscribe")
         if not success:
@@ -288,7 +370,6 @@ class SessionRunner(object):
 
         self.session.subscribe(bbgsublist)
             
-                
 
     async def _sendInfo(self, command, bbgRequest):
         """ sends back structure information about the request """
@@ -298,19 +379,21 @@ class SessionRunner(object):
         await dataq.put(sendmsg)
 
 
+# ----------------- multiple sessions are managed here ----------------------
+
 
 class SessionsManager(SessionsManagerServicer):
     # implements all the gRPC methods for the session manager
     # and communicates with the SessionRunner(s)
 
     def __init__(self):
-        self.my_number = 0
         self.sessions = dict() # the seesions
-        self.subquees = dict()
-        self.sublisteners = dict()
+        self.maxSessions = 7
 
     async def openSession(self, options: SessionOptions, 
                           context: grpc.aio.ServicerContext) -> Session:
+        if len(self.sessions) >= self.maxSessions:
+            context.abort(grpc.StatusCode.RESOURCE_EXHAUSTED, "Too many sessions")
         print("opening session")
         auth_context = context.auth_context()
         print(f"auth_context: {auth_context}")
@@ -322,18 +405,17 @@ class SessionsManager(SessionsManagerServicer):
             return grpcRepresentation
         else:
             logging.warning(f"Session {options.name} already exists")
-            #context.set_code(grpc.StatusCode.ALREADY_EXISTS)
-            return self.sessions[options.name].grpcRepresentation()
+            context.abort(grpc.StatusCode.ALREADY_EXISTS, "Session already exists")
 
     async def closeSession(self, session: Session, context: grpc.aio.ServicerContext) -> Session:
         logging.info("Serving closeSession session %s", session)
-        if session.name in self.sessions:
+        session = self.sessions.get(rsession.name)
+        if session:
             grpcRepresentation = await self.sessions[session.name].close()
             del self.sessions[session.name]
             return grpcRepresentation
         else:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            return session
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
     async def historicalDataRequest(self, 
                                     request: HistoricalDataRequest, 
@@ -344,109 +426,64 @@ class SessionsManager(SessionsManagerServicer):
             result = buildHistoricalDataResponse(data)
             return result 
         else:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            return HistoricalDataResponse(error="Session not found")
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
+
+
 
     async def subscribeStream(self, request_iterator, context: grpc.aio.ServicerContext):
+        sessnm = None
+        done = False
 
-        # TODO Maybe all this crap is supposed to be in the sessionRunner??
+        # Define a coroutine to handle incoming messages
+        async def handle_messages():
+            nonlocal sessnm, done
+            try:
+                async for rsession in request_iterator:
+                    print(Fore.GREEN, rsession, Style.RESET_ALL)
+                    if sessnm is None:
+                        sessnm = rsession.name
+                        print(Fore.YELLOW, f"Session is {sessnm}", Style.RESET_ALL)
+                        session = self.sessions.get(sessnm)
+                        if not session:
+                            await context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
+                    else:
+                        if rsession.name != sessnm:
+                            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Session name mismatch")
+                    # Process the subscription request
+                    await session.subscribe(rsession)
+            except grpc.aio._call.AioRpcError as e:
+                print(Fore.RED, f"gRPC Error: {e}", Style.RESET_ALL)
+            except Exception as e:
+                print(Fore.RED, f"Unexpected error: {e}", Style.RESET_ALL)
+            finally:
+                done = True
 
+        # Create the background task
+        message_task = asyncio.create_task(handle_messages())
 
-        # start the response collector (example follows)
-        other_task_coroutine = asyncio.create_task(other_task())
-
-        # now listen for new subscriptions
-        async for r in request_iterator:
-            session = self.sessions.get(r.name)
-            sub = await session.subscribe(r)
-            yield SubscriptionData(topic = "yadaaa")
-
-
-
-
-class KeyManager(KeyManagerServicer):
-    # responds on an insecure port with client certificates
-    # but only if authorised by the server. 
-
-    def __init__(self):
-        pass
-
-    async def input_timeout(self, prompt, timeout):
-        # Run the blocking input() function in a separate thread
         try:
-            return await asyncio.wait_for(asyncio.to_thread(input, prompt), 
-                                          timeout=timeout)
-        except asyncio.TimeoutError:
-            return None 
+            while sessnm is None:
+                await asyncio.sleep(1)
+                print("Waiting for session to be set")
+            while not done:
+                # Get messages from the session's queue
+                msg = self.sessions[sessnm].subq.get()
+                if msg:
+                    print(Fore.MAGENTA, msg, Style.RESET_ALL)
+                    response = buildSubscriptionDataResponse(msg)
+                    print(Fore.CYAN, response, Style.RESET_ALL)
+                    yield response
+                    
+        except asyncio.CancelledError:
+            print(Fore.RED, "Stream handling was cancelled.", Style.RESET_ALL)
+        finally:
+            # Ensure the message task is cancelled
+            message_task.cancel()
+            try:
+                await message_task
+            except asyncio.CancelledError:
+                pass
 
-    async def requestKey(self, 
-                         request: KeyRequestId, 
-                         context: grpc.aio.ServicerContext) -> KeyResponse:
-        # TODO here you gotta ask if you want to grant the request
-        logging.info("Serving keyRequest request %s", request)
-        accept = await self.input_timeout((f"Received request from {context.peer()}"
-                        f" with id {request.id}. Accept? (y/n) "), 5)
-        if accept is None:
-            context.set_code(grpc.StatusCode.DEADLINE_EXCEEDED)
-            return KeyResponse(error="Request timed out")
-        if accept.lower() == "y":
-            key, cert, cacert = make_client_certs(globalOptions.grpchost, get_conf_dir())
-            bcacert = cacert.public_bytes(serialization.Encoding.PEM)
-            logger.info(f"Key request granted for {request.id} and {context.peer()}")
-            return KeyResponse(key=key, cert=cert, cacert=bcacert, error = "")
-        else:
-            context.set_code(grpc.StatusCode.PERMISSION_DENIED)
-            return KeyResponse(error="Request denied")
-
-
-async def serveSessions() -> None:
-
-    listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
-    sessionServer = grpc.aio.server()
-    add_SessionsManagerServicer_to_server(SessionsManager(), sessionServer)
-
-    # first check if the certs are there
-    confdir = get_conf_dir()
-    if not ((confdir / "server_certificate.pem").exists() and \
-            (confdir / "server_private_key.pem").exists() and \
-            (confdir / "ca_certificate.pem").exists()):
-        yn = input("Certificates not found. Make them? (y/n) ")
-        if yn.lower() == "y":
-            make_all_certs(str(globalOptions.grpchost), confdir)
-        else:
-            print("Exiting.")
-
-
-    # Load server's certificate and private key
-    with open(confdir / "server_certificate.pem", "rb") as f:
-        serverCert = f.read()
-    with open(confdir / "server_private_key.pem", "rb") as f:
-        serverKey = f.read()
-    # Load CA certificate to verify clients
-    with open(confdir / "ca_certificate.pem", "rb") as f:
-        CAcert = f.read()
-
-
-    serverCredentials = grpc.ssl_server_credentials(
-        [(serverKey, serverCert)],
-        root_certificates=CAcert,
-        require_client_auth=True,  # Require clients to provide valid certificates
-    )
-    sessionServer.add_secure_port(listenAddr, serverCredentials) 
-    logging.info(f"Starting session server on {listenAddr}")
-    await sessionServer.start()
-    await sessionServer.wait_for_termination()
-
-
-async def keySession() -> None:
-
-    keyListenAddr = f"{globalOptions.grpchost}:{globalOptions.grpckeyport}"
-    keyServer = grpc.aio.server()
-    add_KeyManagerServicer_to_server(KeyManager(), keyServer)
-    keyServer.add_insecure_port(keyListenAddr) # this listens without credentials
-    logging.info(f"Starting key server on {keyListenAddr}")
-    await keyServer.start()
-    await keyServer.wait_for_termination()
 
 async def main():
     await asyncio.gather(serveSessions(), keySession())

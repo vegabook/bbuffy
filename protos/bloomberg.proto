@@ -14,8 +14,6 @@ import "google/protobuf/any.proto";
 // Key management
 service KeyManager {
   rpc requestKey (KeyRequestId) returns (KeyResponse) {}
-  rpc sayHello (HelloRequest) returns (stream HelloReply) {}
-  rpc sum (SumRequest) returns (SumResponse) {}
 }
 
 // Bloomberg API session management
@@ -23,7 +21,7 @@ service SessionsManager {
 
   rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
-  rpc subscribeStream (stream Session) returns (stream SubscriptionData) {} 
+  rpc subscribeStream (stream Session) returns (stream SubscriptionDataResponse) {} 
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
@@ -39,7 +37,6 @@ message SessionOptions {
   string name = 1;
   int32 interval = 2; // subscription interval in seconds
   int32 maxEventQueueSize = 3; // event queue size
-  string error = 4;
 }
 
 
@@ -62,12 +59,15 @@ message SubscriptionList {
   repeated Topic topics = 1;
 }
 
-message SubscriptionData {
+message SubscriptionDataResponse {
   string topic = 1;                          
   google.protobuf.Timestamp timestamp = 2;   
-  // Dynamic fields with arbitrary names and types }
-  map<string, google.protobuf.Value> fields = 3; 
-  string error = 4;
+  repeated SubFieldData fields = 3;
+}
+
+message SubFieldData {
+  string field = 1;
+  google.protobuf.Value value = 2;
 }
 
 
@@ -76,7 +76,6 @@ message Session {
   repeated string services = 2;
   SubscriptionList subscriptionList = 3;
   bool alive = 4;
-  string error = 5;
 }
 
 /////////////// Historical data //////////////////
@@ -95,7 +94,6 @@ message HistoricalDataRequest {
 message HistoricalDataResponse {
     // An array of items, each containing security data
     repeated HistoricalDataResponseItem items = 1;
-    string error = 2;
 }
 
 // Each item contains security data
@@ -130,7 +128,6 @@ message KeyResponse {
   bytes key = 1;
   bytes cert = 2;
   bytes cacert = 3;
-  string error = 4;
 }
 
 ///////////// simple examples //////////////////

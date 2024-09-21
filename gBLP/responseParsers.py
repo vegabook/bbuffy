@@ -5,6 +5,13 @@ from bloomberg_pb2 import (
     FieldData
 )
 
+from bloomberg_pb2 import (
+    SubscriptionDataResponse,
+    SubFieldData
+)
+
+
+
 from google.protobuf.timestamp_pb2 import Timestamp
 from google.protobuf.struct_pb2 import Value
 from google.protobuf.struct_pb2 import Struct
@@ -56,6 +63,34 @@ def buildHistoricalDataResponse(data):
         
         # Append to items
         response.items.append(responseItem)
-    
     return response
+
+
+
+def buildSubscriptionDataResponse(data):
+    #('subdata', {'timestamp': datetime.datetime(2024, 9, 21, 23, 15, 7), 
+    #'topic': 'XBTUSD Curncy', 
+    #'prices': [{'field': 'LAST_PRICE', 'value': 63126.18}, {'field': 'BID', 'value': 63122.35}, {'field': 'ASK', 'value': 63130.0}]})
+    response = SubscriptionDataResponse()
+    subdata = data[1]
+    response.timestamp.FromDatetime(subdata['timestamp'])
+    response.topic = subdata['topic']
+    for price in subdata['prices']:
+        print(price)
+        fieldDataMsg = SubFieldData()
+        fieldDataMsg.field = price['field']
+        if isinstance(price['value'], (int, float)):
+            fieldDataMsg.value.number_value = price['value']
+        elif isinstance(price['value'], str):
+            fieldDataMsg.value.string_value = price['value']
+        elif isinstance(price['value'], bool):
+            fieldDataMsg.value.bool_value = price['value']
+        elif isinstance(price['value'], datetime.datetime):
+            fieldDataMsg.value.number_value = price['value'].timestamp()
+        else:
+            raise ValueError(f"Unsupported type for field '{key}': {type(value)}")
+        response.fields.append(fieldDataMsg)
+    return response
+
+
 

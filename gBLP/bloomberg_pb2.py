@@ -18,61 +18,51 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x62loomberg.proto\x12\tbloomberg\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19google/protobuf/any.proto\"Z\n\x0eSessionOptions\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08interval\x18\x02 \x01(\x05\x12\x19\n\x11maxEventQueueSize\x18\x03 \x01(\x05\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"\x9e\x01\n\x05Topic\x12\x0c\n\x04name\x18\x01 \x01(\t\x12(\n\x04type\x18\x02 \x01(\x0e\x32\x1a.bloomberg.Topic.topicType\x12\x0e\n\x06\x66ields\x18\x03 \x03(\t\x12\x10\n\x08interval\x18\x04 \x01(\x05\";\n\ttopicType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\n\n\x06TICKER\x10\x01\x12\n\n\x06SEDOL1\x10\x02\x12\t\n\x05\x43USIP\x10\x03\"4\n\x10SubscriptionList\x12 \n\x06topics\x18\x01 \x03(\x0b\x32\x10.bloomberg.Topic\"\xd0\x01\n\x10SubscriptionData\x12\r\n\x05topic\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x37\n\x06\x66ields\x18\x03 \x03(\x0b\x32\'.bloomberg.SubscriptionData.FieldsEntry\x1a\x45\n\x0b\x46ieldsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.google.protobuf.Value:\x02\x38\x01\"~\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08services\x18\x02 \x03(\t\x12\x35\n\x10subscriptionList\x18\x03 \x01(\x0b\x32\x1b.bloomberg.SubscriptionList\x12\r\n\x05\x61live\x18\x04 \x01(\x08\x12\r\n\x05\x65rror\x18\x05 \x01(\t\"\xa0\x02\n\x15HistoricalDataRequest\x12#\n\x07session\x18\x01 \x01(\x0b\x32\x12.bloomberg.Session\x12\x0e\n\x06topics\x18\x02 \x03(\t\x12\x0e\n\x06\x66ields\x18\x03 \x03(\t\x12)\n\x05start\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x03\x65nd\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12>\n\x07options\x18\x06 \x03(\x0b\x32-.bloomberg.HistoricalDataRequest.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"]\n\x16HistoricalDataResponse\x12\x34\n\x05items\x18\x01 \x03(\x0b\x32%.bloomberg.HistoricalDataResponseItem\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"L\n\x1aHistoricalDataResponseItem\x12.\n\rsecurity_data\x18\x01 \x01(\x0b\x32\x17.bloomberg.SecurityData\"\xbb\x01\n\x0cSecurityData\x12\x10\n\x08security\x18\x01 \x01(\t\x12&\n\x08\x65id_data\x18\x02 \x03(\x0b\x32\x14.google.protobuf.Any\x12\x17\n\x0fsequence_number\x18\x03 \x01(\x05\x12.\n\x10\x66ield_exceptions\x18\x04 \x03(\x0b\x32\x14.google.protobuf.Any\x12(\n\nfield_data\x18\x05 \x03(\x0b\x32\x14.bloomberg.FieldData\"\xae\x01\n\tFieldData\x12(\n\x04\x64\x61te\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x06\x66ields\x18\x02 \x03(\x0b\x32 .bloomberg.FieldData.FieldsEntry\x1a\x45\n\x0b\x46ieldsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.google.protobuf.Value:\x02\x38\x01\"\x1a\n\x0cKeyRequestId\x12\n\n\x02id\x18\x01 \x01(\t\"G\n\x0bKeyResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x0e\n\x06\x63\x61\x63\x65rt\x18\x03 \x01(\x0c\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"3\n\x0cHelloRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rnum_greetings\x18\x02 \x01(\t\"\x1d\n\nHelloReply\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\nSumRequest\x12\x0c\n\x04num1\x18\x01 \x01(\x05\x12\x0c\n\x04num2\x18\x02 \x01(\x05\"\x1d\n\x0bSumResponse\x12\x0e\n\x06result\x18\x01 \x01(\x05\x32\xc5\x01\n\nKeyManager\x12?\n\nrequestKey\x12\x17.bloomberg.KeyRequestId\x1a\x16.bloomberg.KeyResponse\"\x00\x12>\n\x08sayHello\x12\x17.bloomberg.HelloRequest\x1a\x15.bloomberg.HelloReply\"\x00\x30\x01\x12\x36\n\x03sum\x12\x15.bloomberg.SumRequest\x1a\x16.bloomberg.SumResponse\"\x00\x32\xaa\x04\n\x0fSessionsManager\x12>\n\x08sayHello\x12\x17.bloomberg.HelloRequest\x1a\x15.bloomberg.HelloReply\"\x00\x30\x01\x12\x36\n\x03sum\x12\x15.bloomberg.SumRequest\x1a\x16.bloomberg.SumResponse\"\x00\x12H\n\x11getDefaultOptions\x12\x16.google.protobuf.Empty\x1a\x19.bloomberg.SessionOptions\"\x00\x12>\n\x0bopenSession\x12\x19.bloomberg.SessionOptions\x1a\x12.bloomberg.Session\"\x00\x12\x42\n\tsubscribe\x12\x12.bloomberg.Session\x1a\x1b.bloomberg.SubscriptionData\"\x00(\x01\x30\x01\x12\x37\n\x0bsessionInfo\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x38\n\x0c\x63loseSession\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12^\n\x15historicalDataRequest\x12 .bloomberg.HistoricalDataRequest\x1a!.bloomberg.HistoricalDataResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0f\x62loomberg.proto\x12\tbloomberg\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x19google/protobuf/any.proto\"K\n\x0eSessionOptions\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08interval\x18\x02 \x01(\x05\x12\x19\n\x11maxEventQueueSize\x18\x03 \x01(\x05\"\x9e\x01\n\x05Topic\x12\x0c\n\x04name\x18\x01 \x01(\t\x12(\n\x04type\x18\x02 \x01(\x0e\x32\x1a.bloomberg.Topic.topicType\x12\x0e\n\x06\x66ields\x18\x03 \x03(\t\x12\x10\n\x08interval\x18\x04 \x01(\x05\";\n\ttopicType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\n\n\x06TICKER\x10\x01\x12\n\n\x06SEDOL1\x10\x02\x12\t\n\x05\x43USIP\x10\x03\"4\n\x10SubscriptionList\x12 \n\x06topics\x18\x01 \x03(\x0b\x32\x10.bloomberg.Topic\"\x81\x01\n\x18SubscriptionDataResponse\x12\r\n\x05topic\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x06\x66ields\x18\x03 \x03(\x0b\x32\x17.bloomberg.SubFieldData\"D\n\x0cSubFieldData\x12\r\n\x05\x66ield\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.google.protobuf.Value\"o\n\x07Session\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08services\x18\x02 \x03(\t\x12\x35\n\x10subscriptionList\x18\x03 \x01(\x0b\x32\x1b.bloomberg.SubscriptionList\x12\r\n\x05\x61live\x18\x04 \x01(\x08\"\xa0\x02\n\x15HistoricalDataRequest\x12#\n\x07session\x18\x01 \x01(\x0b\x32\x12.bloomberg.Session\x12\x0e\n\x06topics\x18\x02 \x03(\t\x12\x0e\n\x06\x66ields\x18\x03 \x03(\t\x12)\n\x05start\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x03\x65nd\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12>\n\x07options\x18\x06 \x03(\x0b\x32-.bloomberg.HistoricalDataRequest.OptionsEntry\x1a.\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"N\n\x16HistoricalDataResponse\x12\x34\n\x05items\x18\x01 \x03(\x0b\x32%.bloomberg.HistoricalDataResponseItem\"L\n\x1aHistoricalDataResponseItem\x12.\n\rsecurity_data\x18\x01 \x01(\x0b\x32\x17.bloomberg.SecurityData\"\xbb\x01\n\x0cSecurityData\x12\x10\n\x08security\x18\x01 \x01(\t\x12&\n\x08\x65id_data\x18\x02 \x03(\x0b\x32\x14.google.protobuf.Any\x12\x17\n\x0fsequence_number\x18\x03 \x01(\x05\x12.\n\x10\x66ield_exceptions\x18\x04 \x03(\x0b\x32\x14.google.protobuf.Any\x12(\n\nfield_data\x18\x05 \x03(\x0b\x32\x14.bloomberg.FieldData\"\xae\x01\n\tFieldData\x12(\n\x04\x64\x61te\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x30\n\x06\x66ields\x18\x02 \x03(\x0b\x32 .bloomberg.FieldData.FieldsEntry\x1a\x45\n\x0b\x46ieldsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.google.protobuf.Value:\x02\x38\x01\"\x1a\n\x0cKeyRequestId\x12\n\n\x02id\x18\x01 \x01(\t\"8\n\x0bKeyResponse\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\x0c\n\x04\x63\x65rt\x18\x02 \x01(\x0c\x12\x0e\n\x06\x63\x61\x63\x65rt\x18\x03 \x01(\x0c\x32M\n\nKeyManager\x12?\n\nrequestKey\x12\x17.bloomberg.KeyRequestId\x1a\x16.bloomberg.KeyResponse\"\x00\x32\xc0\x03\n\x0fSessionsManager\x12H\n\x11getDefaultOptions\x12\x16.google.protobuf.Empty\x1a\x19.bloomberg.SessionOptions\"\x00\x12>\n\x0bopenSession\x12\x19.bloomberg.SessionOptions\x1a\x12.bloomberg.Session\"\x00\x12P\n\x0fsubscribeStream\x12\x12.bloomberg.Session\x1a#.bloomberg.SubscriptionDataResponse\"\x00(\x01\x30\x01\x12\x37\n\x0bsessionInfo\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12\x38\n\x0c\x63loseSession\x12\x12.bloomberg.Session\x1a\x12.bloomberg.Session\"\x00\x12^\n\x15historicalDataRequest\x12 .bloomberg.HistoricalDataRequest\x1a!.bloomberg.HistoricalDataResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'bloomberg_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SUBSCRIPTIONDATA_FIELDSENTRY']._loaded_options = None
-  _globals['_SUBSCRIPTIONDATA_FIELDSENTRY']._serialized_options = b'8\001'
   _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._loaded_options = None
   _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_options = b'8\001'
   _globals['_FIELDDATA_FIELDSENTRY']._loaded_options = None
   _globals['_FIELDDATA_FIELDSENTRY']._serialized_options = b'8\001'
   _globals['_SESSIONOPTIONS']._serialized_start=149
-  _globals['_SESSIONOPTIONS']._serialized_end=239
-  _globals['_TOPIC']._serialized_start=242
-  _globals['_TOPIC']._serialized_end=400
-  _globals['_TOPIC_TOPICTYPE']._serialized_start=341
-  _globals['_TOPIC_TOPICTYPE']._serialized_end=400
-  _globals['_SUBSCRIPTIONLIST']._serialized_start=402
-  _globals['_SUBSCRIPTIONLIST']._serialized_end=454
-  _globals['_SUBSCRIPTIONDATA']._serialized_start=457
-  _globals['_SUBSCRIPTIONDATA']._serialized_end=665
-  _globals['_SUBSCRIPTIONDATA_FIELDSENTRY']._serialized_start=596
-  _globals['_SUBSCRIPTIONDATA_FIELDSENTRY']._serialized_end=665
-  _globals['_SESSION']._serialized_start=667
-  _globals['_SESSION']._serialized_end=793
-  _globals['_HISTORICALDATAREQUEST']._serialized_start=796
-  _globals['_HISTORICALDATAREQUEST']._serialized_end=1084
-  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_start=1038
-  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_end=1084
-  _globals['_HISTORICALDATARESPONSE']._serialized_start=1086
-  _globals['_HISTORICALDATARESPONSE']._serialized_end=1179
-  _globals['_HISTORICALDATARESPONSEITEM']._serialized_start=1181
-  _globals['_HISTORICALDATARESPONSEITEM']._serialized_end=1257
-  _globals['_SECURITYDATA']._serialized_start=1260
-  _globals['_SECURITYDATA']._serialized_end=1447
-  _globals['_FIELDDATA']._serialized_start=1450
-  _globals['_FIELDDATA']._serialized_end=1624
-  _globals['_FIELDDATA_FIELDSENTRY']._serialized_start=596
-  _globals['_FIELDDATA_FIELDSENTRY']._serialized_end=665
-  _globals['_KEYREQUESTID']._serialized_start=1626
-  _globals['_KEYREQUESTID']._serialized_end=1652
-  _globals['_KEYRESPONSE']._serialized_start=1654
-  _globals['_KEYRESPONSE']._serialized_end=1725
-  _globals['_HELLOREQUEST']._serialized_start=1727
-  _globals['_HELLOREQUEST']._serialized_end=1778
-  _globals['_HELLOREPLY']._serialized_start=1780
-  _globals['_HELLOREPLY']._serialized_end=1809
-  _globals['_SUMREQUEST']._serialized_start=1811
-  _globals['_SUMREQUEST']._serialized_end=1851
-  _globals['_SUMRESPONSE']._serialized_start=1853
-  _globals['_SUMRESPONSE']._serialized_end=1882
-  _globals['_KEYMANAGER']._serialized_start=1885
-  _globals['_KEYMANAGER']._serialized_end=2082
-  _globals['_SESSIONSMANAGER']._serialized_start=2085
-  _globals['_SESSIONSMANAGER']._serialized_end=2639
+  _globals['_SESSIONOPTIONS']._serialized_end=224
+  _globals['_TOPIC']._serialized_start=227
+  _globals['_TOPIC']._serialized_end=385
+  _globals['_TOPIC_TOPICTYPE']._serialized_start=326
+  _globals['_TOPIC_TOPICTYPE']._serialized_end=385
+  _globals['_SUBSCRIPTIONLIST']._serialized_start=387
+  _globals['_SUBSCRIPTIONLIST']._serialized_end=439
+  _globals['_SUBSCRIPTIONDATARESPONSE']._serialized_start=442
+  _globals['_SUBSCRIPTIONDATARESPONSE']._serialized_end=571
+  _globals['_SUBFIELDDATA']._serialized_start=573
+  _globals['_SUBFIELDDATA']._serialized_end=641
+  _globals['_SESSION']._serialized_start=643
+  _globals['_SESSION']._serialized_end=754
+  _globals['_HISTORICALDATAREQUEST']._serialized_start=757
+  _globals['_HISTORICALDATAREQUEST']._serialized_end=1045
+  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_start=999
+  _globals['_HISTORICALDATAREQUEST_OPTIONSENTRY']._serialized_end=1045
+  _globals['_HISTORICALDATARESPONSE']._serialized_start=1047
+  _globals['_HISTORICALDATARESPONSE']._serialized_end=1125
+  _globals['_HISTORICALDATARESPONSEITEM']._serialized_start=1127
+  _globals['_HISTORICALDATARESPONSEITEM']._serialized_end=1203
+  _globals['_SECURITYDATA']._serialized_start=1206
+  _globals['_SECURITYDATA']._serialized_end=1393
+  _globals['_FIELDDATA']._serialized_start=1396
+  _globals['_FIELDDATA']._serialized_end=1570
+  _globals['_FIELDDATA_FIELDSENTRY']._serialized_start=1501
+  _globals['_FIELDDATA_FIELDSENTRY']._serialized_end=1570
+  _globals['_KEYREQUESTID']._serialized_start=1572
+  _globals['_KEYREQUESTID']._serialized_end=1598
+  _globals['_KEYRESPONSE']._serialized_start=1600
+  _globals['_KEYRESPONSE']._serialized_end=1656
+  _globals['_KEYMANAGER']._serialized_start=1658
+  _globals['_KEYMANAGER']._serialized_end=1735
+  _globals['_SESSIONSMANAGER']._serialized_start=1738
+  _globals['_SESSIONSMANAGER']._serialized_end=2186
 # @@protoc_insertion_point(module_scope)

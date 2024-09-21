@@ -28,6 +28,8 @@ from google.protobuf.timestamp_pb2 import Timestamp as protoTimestamp
 from util.certMaker import get_conf_dir
 import getpass
 import logging
+from colorama import Fore, Back, Style, init as colinit; colinit()
+import IPython
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -61,7 +63,8 @@ class Cession:
         self.grpckeyport = grpckeyport
         self.defaultInterval = defaultInterval
         self.serverEventQueueSize = serverEventQueueSize
-        self.sessgen = None
+        self.sessgen = None 
+
 
     def open(self):
         # Start the event loop in a new thread
@@ -80,12 +83,17 @@ class Cession:
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return future.result()  # Waits until the coroutine is done and returns the result
 
-    def makeName(self, length=6):
+    def run_async_nowait(self, coro):
+        """Schedules a coroutine to be run on the event loop without waiting."""
+        return asyncio.run_coroutine_threadsafe(coro, self.loop)
+
+    def makeName(self, length=7):
         """Make a dummy name if none provided."""
         consonants = "bcdfghjklmnpqrstvwxyz"
         vowels = "aeiou"
+        digits = "0123456789"
         word = ''.join(random.choice(consonants if i % 2 == 0 else vowels) 
-                       for i in range(length))
+                       for i in range(length)) + ''.join(random.choice(digits) for i in range(2))
         return word
 
     async def async_init(self):
@@ -203,65 +211,86 @@ class Cession:
         return data
 
     async def sub_session_generator(self):
-        session = None
+        sub = bloomberg_pb2.SubscriptionList(
+            topics = [bloomberg_pb2.Topic(name="XBTUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
+                                          type = "TICKER", interval = 2)])
+    
+        print(f"Subscribing to topics: {sub}")
+        self.session.subscriptionList.CopyFrom(sub)
+        yield self.session 
+        
+                                            
+
+        sub = bloomberg_pb2.SubscriptionList(
+            topics = [bloomberg_pb2.Topic(name="XETUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
+                                          type = "TICKER", interval = 2)])
+    
+        print(f"Subscribing to topics: {sub}")
+        self.session.subscriptionList.CopyFrom(sub)
+        yield self.session
         while True:
-            received = yield session  # Wait for the next value to be sent in
+            await asyncio.sleep(1)
+
 
     # The subscribe method that uses the async generator
-    def subscribe(self, topics, fields, interval):
-        if self.sessgen is None:
-            self.sessgen = self.sub_session_generator()
-            try:
-                session = next(self.sessgen)  # start iterator
-            except StopIteration:
-                pass
-
-        t = [bloomberg_pb2.Topic(name=t, fields=fields, type="TICKER", interval=interval) 
-             for t in topics]
-        sub = bloomberg_pb2.SubscriptionList(topics=t)
-        asyncio.create_task(self.sessgen.asend(sub))  
-        return self.run_async(self.async_subscribe(topics))  
-
-
-    async def async_subscribe(self, topics):
-        async for response in self.stub.subscribe(self.sessgen):
-            print(f"Received: {response}")
+    #def subscribe(self, topics, fields, interval):
+    #    print(Fore.BLUE, "Subscribing to topics", Style.RESET_ALL)
+#
+#        # check if the subscription generator is running 
+#        if self.sessgen is None:
+#            self.sessgen = self.sub_session_generator() # for subscriptions requests
+#            future = asyncio.run_coroutine_threadsafe(self.sessgen.asend(None), self.loop)
+#            future.result()
+#
+#        t = [bloomberg_pb2.Topic(name=t, fields=fields, type="TICKER", interval=interval) 
+#             for t in topics]
+#        sub = bloomberg_pb2.SubscriptionList(topics=t)
+#        self.session.subscriptionList.CopyFrom(sub)
+#        asyncio.run_coroutine_threadsafe(self.sessgen.asend(self.session), self.loop)
+#        return self.run_async(self.async_subscribe())  
 
 
 
 
-if __name__ == "__main__":
-    import IPython
-    mycess = Cession(grpchost=args.grpchost,
-                     grpcport=args.grpcport,
-                     grpckeyport=args.grpckeyport)
+    async def async_subscribe(self):
+        print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
+        try:
+            async for response in self.stub.subscribeStream(self.sub_session_generator()):
+                print(Fore.MAGENTA, f"Received: {response}", Style.RESET_ALL)
+        except asyncio.CancelledError:
+            print(Fore.YELLOW, "Subscription task cancelled.", Style.RESET_ALL)
+        except Exception as e:
+            logger.error(f"Subscription error: {e}")
+
+
+def syncmain():
+    mycess = Cession(
+        grpchost=args.grpchost,
+        grpcport=args.grpcport,
+        grpckeyport=args.grpckeyport
+    )
     mycess.open()
-    hist = mycess.historicalDataRequest(["AAPL US Equity", "IBM US Equity"],
-                                        ["PX_LAST", "PX_BID", "PX_ASK", "CUR_MKT_CAP"],
-                                        dt.datetime(2014, 1, 1),
-                                        dt.datetime(2023, 11, 30))
+
+    # Request historical data
+    hist = mycess.historicalDataRequest(
+        ["AAPL US Equity", "IBM US Equity"],
+        ["PX_LAST", "PX_BID", "PX_ASK", "CUR_MKT_CAP"],
+        dt.datetime(2023, 11, 27),
+        dt.datetime(2023, 11, 30)
+    )
     print(hist)
+
+    # Schedule the async_subscribe coroutine without awaiting
+    mycess.subscription_task = mycess.run_async_nowait(mycess.async_subscribe())
+
+    # Enter IPython shell
     IPython.embed()
+
+    # After exiting IPython, close the session
     mycess.close()
 
+if __name__ == "__main__":
+    syncmain()
 
 
-    #sub = bloomberg_pb2.SubscriptionList(
-    #    topics = [bloomberg_pb2.Topic(name="EURUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
-    #                                  type = "TICKER", interval = 2),
-    #              bloomberg_pb2.Topic(name="USDZAR Curncy", fields=["LAST_PRICE", "LAST_TRADE_ACTUAL"],
-    #                                  type = "TICKER", interval = 4)])
-#
-#    print(f"Subscribing to topics: {sub}")
-#    #session.subscriptionList.CopyFrom(sub)
-#
-#    breakpoint()
-#
-#    async def session_generator(session):
-#        while True:
-#            yield session  # Send the session object to the server
-#
-#    stream = stub.subscribe(session_generator(session))
-#    async for response in stream:
-#        print(f"Received: {response}")
-#
+

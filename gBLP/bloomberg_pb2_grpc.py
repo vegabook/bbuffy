@@ -46,16 +46,6 @@ class KeyManagerStub(object):
                 request_serializer=bloomberg__pb2.KeyRequestId.SerializeToString,
                 response_deserializer=bloomberg__pb2.KeyResponse.FromString,
                 _registered_method=True)
-        self.sayHello = channel.unary_stream(
-                '/bloomberg.KeyManager/sayHello',
-                request_serializer=bloomberg__pb2.HelloRequest.SerializeToString,
-                response_deserializer=bloomberg__pb2.HelloReply.FromString,
-                _registered_method=True)
-        self.sum = channel.unary_unary(
-                '/bloomberg.KeyManager/sum',
-                request_serializer=bloomberg__pb2.SumRequest.SerializeToString,
-                response_deserializer=bloomberg__pb2.SumResponse.FromString,
-                _registered_method=True)
 
 
 class KeyManagerServicer(object):
@@ -68,18 +58,6 @@ class KeyManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def sayHello(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def sum(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_KeyManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -87,16 +65,6 @@ def add_KeyManagerServicer_to_server(servicer, server):
                     servicer.requestKey,
                     request_deserializer=bloomberg__pb2.KeyRequestId.FromString,
                     response_serializer=bloomberg__pb2.KeyResponse.SerializeToString,
-            ),
-            'sayHello': grpc.unary_stream_rpc_method_handler(
-                    servicer.sayHello,
-                    request_deserializer=bloomberg__pb2.HelloRequest.FromString,
-                    response_serializer=bloomberg__pb2.HelloReply.SerializeToString,
-            ),
-            'sum': grpc.unary_unary_rpc_method_handler(
-                    servicer.sum,
-                    request_deserializer=bloomberg__pb2.SumRequest.FromString,
-                    response_serializer=bloomberg__pb2.SumResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -137,60 +105,6 @@ class KeyManager(object):
             metadata,
             _registered_method=True)
 
-    @staticmethod
-    def sayHello(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(
-            request,
-            target,
-            '/bloomberg.KeyManager/sayHello',
-            bloomberg__pb2.HelloRequest.SerializeToString,
-            bloomberg__pb2.HelloReply.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def sum(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/bloomberg.KeyManager/sum',
-            bloomberg__pb2.SumRequest.SerializeToString,
-            bloomberg__pb2.SumResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
 
 class SessionsManagerStub(object):
     """Bloomberg API session management
@@ -202,16 +116,6 @@ class SessionsManagerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.sayHello = channel.unary_stream(
-                '/bloomberg.SessionsManager/sayHello',
-                request_serializer=bloomberg__pb2.HelloRequest.SerializeToString,
-                response_deserializer=bloomberg__pb2.HelloReply.FromString,
-                _registered_method=True)
-        self.sum = channel.unary_unary(
-                '/bloomberg.SessionsManager/sum',
-                request_serializer=bloomberg__pb2.SumRequest.SerializeToString,
-                response_deserializer=bloomberg__pb2.SumResponse.FromString,
-                _registered_method=True)
         self.getDefaultOptions = channel.unary_unary(
                 '/bloomberg.SessionsManager/getDefaultOptions',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -222,10 +126,10 @@ class SessionsManagerStub(object):
                 request_serializer=bloomberg__pb2.SessionOptions.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
-        self.subscribe = channel.stream_stream(
-                '/bloomberg.SessionsManager/subscribe',
+        self.subscribeStream = channel.stream_stream(
+                '/bloomberg.SessionsManager/subscribeStream',
                 request_serializer=bloomberg__pb2.Session.SerializeToString,
-                response_deserializer=bloomberg__pb2.SubscriptionData.FromString,
+                response_deserializer=bloomberg__pb2.SubscriptionDataResponse.FromString,
                 _registered_method=True)
         self.sessionInfo = channel.unary_unary(
                 '/bloomberg.SessionsManager/sessionInfo',
@@ -248,22 +152,8 @@ class SessionsManagerServicer(object):
     """Bloomberg API session management
     """
 
-    def sayHello(self, request, context):
-        """basic examples TODO delete later
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def sum(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def getDefaultOptions(self, request, context):
-        """Bloomberg
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -274,7 +164,7 @@ class SessionsManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def subscribe(self, request_iterator, context):
+    def subscribeStream(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -301,16 +191,6 @@ class SessionsManagerServicer(object):
 
 def add_SessionsManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'sayHello': grpc.unary_stream_rpc_method_handler(
-                    servicer.sayHello,
-                    request_deserializer=bloomberg__pb2.HelloRequest.FromString,
-                    response_serializer=bloomberg__pb2.HelloReply.SerializeToString,
-            ),
-            'sum': grpc.unary_unary_rpc_method_handler(
-                    servicer.sum,
-                    request_deserializer=bloomberg__pb2.SumRequest.FromString,
-                    response_serializer=bloomberg__pb2.SumResponse.SerializeToString,
-            ),
             'getDefaultOptions': grpc.unary_unary_rpc_method_handler(
                     servicer.getDefaultOptions,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
@@ -321,10 +201,10 @@ def add_SessionsManagerServicer_to_server(servicer, server):
                     request_deserializer=bloomberg__pb2.SessionOptions.FromString,
                     response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
-            'subscribe': grpc.stream_stream_rpc_method_handler(
-                    servicer.subscribe,
+            'subscribeStream': grpc.stream_stream_rpc_method_handler(
+                    servicer.subscribeStream,
                     request_deserializer=bloomberg__pb2.Session.FromString,
-                    response_serializer=bloomberg__pb2.SubscriptionData.SerializeToString,
+                    response_serializer=bloomberg__pb2.SubscriptionDataResponse.SerializeToString,
             ),
             'sessionInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.sessionInfo,
@@ -352,60 +232,6 @@ def add_SessionsManagerServicer_to_server(servicer, server):
 class SessionsManager(object):
     """Bloomberg API session management
     """
-
-    @staticmethod
-    def sayHello(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(
-            request,
-            target,
-            '/bloomberg.SessionsManager/sayHello',
-            bloomberg__pb2.HelloRequest.SerializeToString,
-            bloomberg__pb2.HelloReply.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def sum(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/bloomberg.SessionsManager/sum',
-            bloomberg__pb2.SumRequest.SerializeToString,
-            bloomberg__pb2.SumResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
 
     @staticmethod
     def getDefaultOptions(request,
@@ -462,7 +288,7 @@ class SessionsManager(object):
             _registered_method=True)
 
     @staticmethod
-    def subscribe(request_iterator,
+    def subscribeStream(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -475,9 +301,9 @@ class SessionsManager(object):
         return grpc.experimental.stream_stream(
             request_iterator,
             target,
-            '/bloomberg.SessionsManager/subscribe',
+            '/bloomberg.SessionsManager/subscribeStream',
             bloomberg__pb2.Session.SerializeToString,
-            bloomberg__pb2.SubscriptionData.FromString,
+            bloomberg__pb2.SubscriptionDataResponse.FromString,
             options,
             channel_credentials,
             insecure,
