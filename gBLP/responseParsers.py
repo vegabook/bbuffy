@@ -88,6 +88,7 @@ def buildSubscriptionDataResponse(data):
         elif isinstance(price['value'], datetime.datetime):
             fieldDataMsg.value.number_value = price['value'].timestamp()
         else:
+            breakpoint()
             raise ValueError(f"Unsupported type for field '{key}': {type(value)}")
         response.fields.append(fieldDataMsg)
     return response

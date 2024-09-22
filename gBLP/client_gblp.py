@@ -232,26 +232,6 @@ class Cession:
             await asyncio.sleep(1)
 
 
-    # The subscribe method that uses the async generator
-    #def subscribe(self, topics, fields, interval):
-    #    print(Fore.BLUE, "Subscribing to topics", Style.RESET_ALL)
-#
-#        # check if the subscription generator is running 
-#        if self.sessgen is None:
-#            self.sessgen = self.sub_session_generator() # for subscriptions requests
-#            future = asyncio.run_coroutine_threadsafe(self.sessgen.asend(None), self.loop)
-#            future.result()
-#
-#        t = [bloomberg_pb2.Topic(name=t, fields=fields, type="TICKER", interval=interval) 
-#             for t in topics]
-#        sub = bloomberg_pb2.SubscriptionList(topics=t)
-#        self.session.subscriptionList.CopyFrom(sub)
-#        asyncio.run_coroutine_threadsafe(self.sessgen.asend(self.session), self.loop)
-#        return self.run_async(self.async_subscribe())  
-
-
-
-
     async def async_subscribe(self):
         print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
         try:
@@ -290,7 +270,12 @@ def syncmain():
     mycess.close()
 
 if __name__ == "__main__":
-    syncmain()
+    # TODO move certs into another class
+    if args.delcerts:
+        mycess = Cession()
+        mycess.delCerts()
+    else:
+        syncmain()
 
 
 

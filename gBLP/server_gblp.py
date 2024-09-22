@@ -155,7 +155,7 @@ class KeyManager(KeyManagerServicer):
             key, cert, cacert = make_client_certs(globalOptions.grpchost, get_conf_dir())
             bcacert = cacert.public_bytes(serialization.Encoding.PEM)
             logger.info(f"Key request granted for {request.id} and {context.peer()}")
-            return KeyResponse(key=key, cert=cert, cacert=bcacert, error = "")
+            return KeyResponse(key=key, cert=cert, cacert=bcacert)
         else:
             context.abort(grpc.StatusCode.PERMISSION_DENIED, "Request denied")
 
@@ -272,7 +272,7 @@ class SessionRunner(object):
         return (True, request)
 
 
-    def grpcRepresentation(self, error = "") -> Session:
+    def grpcRepresentation(self) -> Session:
         """ return the session representation in gRPC terms """
         return Session(name=self.name, 
                        services=self.servicesAvail.keys(), 
@@ -316,7 +316,7 @@ class SessionRunner(object):
         logger.info(f"Requesting historical data {request}")
         success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
         if not success:
-            return HistoricalDataResponse(error=bbgRequest)
+            return HistoricalDataResponse() # TODO do error handling also for session subscribe
         #self._sendInfo("HistoricalDataRequest", bbgRequest)
         logger.info(f"setting securities {request.topics}")
         dtstart = request.start.ToDatetime().strftime("%Y%m%d")
@@ -352,7 +352,7 @@ class SessionRunner(object):
         # make sure the service is open
         success, service = self._getService("Subscribe")
         if not success:
-            return self.grpcRepresentation(error=service)
+            return self.grpcRepresentation()
         # create the subscription list
         subs = []
         bbgsublist = blpapi.SubscriptionList()
@@ -407,12 +407,12 @@ class SessionsManager(SessionsManagerServicer):
             logging.warning(f"Session {options.name} already exists")
             context.abort(grpc.StatusCode.ALREADY_EXISTS, "Session already exists")
 
-    async def closeSession(self, session: Session, context: grpc.aio.ServicerContext) -> Session:
+    async def closeSession(self, gsession: Session, context: grpc.aio.ServicerContext) -> Session:
         logging.info("Serving closeSession session %s", session)
-        session = self.sessions.get(rsession.name)
+        session = self.sessions.get(gsession.name)
         if session:
-            grpcRepresentation = await self.sessions[session.name].close()
-            del self.sessions[session.name]
+            grpcRepresentation = await self.sessions[gsession.name].close()
+            del self.sessions[gsession.name]
             return grpcRepresentation
         else:
             context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
