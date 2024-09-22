@@ -17,6 +17,9 @@ from google.protobuf.struct_pb2 import Value
 from google.protobuf.struct_pb2 import Struct
 import datetime
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def buildHistoricalDataResponse(data):
     response = HistoricalDataResponse()
@@ -76,7 +79,7 @@ def buildSubscriptionDataResponse(data):
     response.timestamp.FromDatetime(subdata['timestamp'])
     response.topic = subdata['topic']
     for price in subdata['prices']:
-        print(price)
+        success = True
         fieldDataMsg = SubFieldData()
         fieldDataMsg.field = price['field']
         if isinstance(price['value'], (int, float)):
@@ -88,9 +91,10 @@ def buildSubscriptionDataResponse(data):
         elif isinstance(price['value'], datetime.datetime):
             fieldDataMsg.value.number_value = price['value'].timestamp()
         else:
-            breakpoint()
-            raise ValueError(f"Unsupported type for field '{key}': {type(value)}")
-        response.fields.append(fieldDataMsg)
+            logger.warning(f"Unsupported type for field '{price['field']}': {type(price['value'])}")
+            success = False
+        if success:
+            response.fields.append(fieldDataMsg)
     return response
 
 

@@ -30,6 +30,7 @@ import getpass
 import logging
 from colorama import Fore, Back, Style, init as colinit; colinit()
 import IPython
+from Queue import Queue
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -64,6 +65,7 @@ class Cession:
         self.defaultInterval = defaultInterval
         self.serverEventQueueSize = serverEventQueueSize
         self.sessgen = None 
+        self.subReqQ = Queue()
 
 
     def open(self):
@@ -210,7 +212,14 @@ class Cession:
         data = await self.stub.historicalDataRequest(hreq)
         return data
 
-    async def sub_session_generator(self):
+    async def _sub_session_generator(self):
+        # contantly wait for something to arrive in subReqQ
+        while True:
+            sub = self.subReqQ.get()
+            if sub is None:
+                break
+            self.session.subscriptionList.CopyFrom(sub)
+            yield self.session
         sub = bloomberg_pb2.SubscriptionList(
             topics = [bloomberg_pb2.Topic(name="XBTUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
                                           type = "TICKER", interval = 2)])
@@ -232,15 +241,18 @@ class Cession:
             await asyncio.sleep(1)
 
 
-    async def async_subscribe(self):
+    async def _async_subscribe(self):
         print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
         try:
-            async for response in self.stub.subscribeStream(self.sub_session_generator()):
+            async for response in self.stub.subscribeStream(self._sub_session_generator()):
                 print(Fore.MAGENTA, f"Received: {response}", Style.RESET_ALL)
         except asyncio.CancelledError:
             print(Fore.YELLOW, "Subscription task cancelled.", Style.RESET_ALL)
         except Exception as e:
             logger.error(f"Subscription error: {e}")
+
+
+    def subscribe(self):
 
 
 def syncmain():
@@ -261,7 +273,7 @@ def syncmain():
     print(hist)
 
     # Schedule the async_subscribe coroutine without awaiting
-    mycess.subscription_task = mycess.run_async_nowait(mycess.async_subscribe())
+    mycess.subscription_task = mycess.run_async_nowait(mycess._async_subscribe())
 
     # Enter IPython shell
     IPython.embed()

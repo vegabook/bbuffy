@@ -145,7 +145,6 @@ class KeyManager(KeyManagerServicer):
     async def requestKey(self, 
                          request: KeyRequestId, 
                          context: grpc.aio.ServicerContext) -> KeyResponse:
-        # TODO here you gotta ask if you want to grant the request
         logging.info("Serving keyRequest request %s", request)
         accept = await self.input_timeout((f"Received request from {context.peer()}"
                         f" with id {request.id}. Accept? (y/n) "), 5)
@@ -316,8 +315,7 @@ class SessionRunner(object):
         logger.info(f"Requesting historical data {request}")
         success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
         if not success:
-            return HistoricalDataResponse() # TODO do error handling also for session subscribe
-        #self._sendInfo("HistoricalDataRequest", bbgRequest)
+            return None
         logger.info(f"setting securities {request.topics}")
         dtstart = request.start.ToDatetime().strftime("%Y%m%d")
         dtend = request.end.ToDatetime().strftime("%Y%m%d")
@@ -333,8 +331,7 @@ class SessionRunner(object):
         q = queue.Queue()
         self.correlators[corrString] = {"request": request, "queue": q}
         self.session.sendRequest(bbgRequest, correlationId=correlationId)
-        # now wait for all the messages from our request to be received 
-        # from the event handler
+        # TODO what happens if bad request?
         loop = asyncio.get_event_loop()
         messageList = []
         while True:
@@ -423,8 +420,11 @@ class SessionsManager(SessionsManagerServicer):
         session = self.sessions.get(request.session.name)
         if session:
             data = await session.historicalDataRequest(request)
-            result = buildHistoricalDataResponse(data)
-            return result 
+            if data:    
+                result = buildHistoricalDataResponse(data)
+                return result 
+            else:
+                context.abort(grpc.StatusCode.NOT_FOUND, "Data not found")
         else:
             context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
