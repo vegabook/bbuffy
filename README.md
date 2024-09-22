@@ -10,9 +10,28 @@ This software is provided "as is," without warranty of any kind, express or impl
 
 $$\textcolor{JungleGreen}{\rule{120cm}{0.5mm}}$$
 
+
+## Status
+_This is an alpha work in progress_
+* `historicalDataRequest` is working
+* `subscribe` / `unsubscribe` is working via a threaded async class that does not take over your REPL. 
+
+
+## Description
+Bloomberg provides native APIs for Python, Java, C#, and C++. This project aims to provide a Python-based gRPC server that can be used by any gRPC-capable programming language to access the Bloomberg V3 API. 
+This project also allows access to the API from any operating system, including Linux and Mac, by running the server in a Windows VM, or by running WSL.
+Supports:
+* Bloomberg Terminal API.
+* Historica APIs (`//refdata`) for ticks, bars, and daily closes. 
+* Streaming APIs (`//mktdata`, `//mktbar` services). Subscribe to data, Excel-style, with push updates.  
+* Most common session options. 
+* Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
+Does not currently support:
+* Bloomberg's Bpipe product, which requires the authentication subsystem to be implemented.
+
 ## Quickstart
-Recall that Bloomberg API is only available from Windows, so the server must be run from Windows. Also, 
-you cannot move data off machine, according to the Bloomberg API terms. So at least one of the clients (Windows, Linux, Mac) or the server (Windows only) must be in a VM. 
+The Bloomberg API is only available from Windows, so the server must be run from Windows. 
+You cannot move data off machine, according to the Bloomberg API terms. Therefore if you're using this code from a Mac or Linux, you will need to ensure all operating systems are VM'd on the same machine.  
 
 #### Server
 1. In a Microsoft Windows shell, Clone this repo and `cd gRPC`. 
@@ -30,21 +49,6 @@ you will need access to the IP address of your server.
 2. Ensure Python 3.10+ is installed and `pip install -r requirements.txt`.
 3. Run the client: `python client_gblp.py --grpchost <your_ip> --grpcport 50051`
 
-
-## Description
-Bloomberg provides native APIs for Python, Java, C#, and C++. This project aims to provide a Python-based gRPC server that can be used by any gRPC-capable programming language to access the Bloomberg V3 API. 
-Supports:
-* Bloomberg Terminal API.
-* Historica APIs (`//refdata`) for ticks, bars, and daily closes. 
-* Streaming APIs (`//mktdata`, `//mktbar` services). Subscribe to data, Excel-style, with push updates.  
-* Most common session options. 
-* Protocol buffer `.proto` files usable by any programming language that has a gRPC implementation.
-Does not currently support:
-* Bloomberg's Bpipe product, which requires the authentication subsystem to be implemented.
-
-
-## Status
-_This is an alpha work in progress_
 
 
 ## Installation
