@@ -311,6 +311,7 @@ class SessionRunner(object):
 
     async def historicalDataRequest(self, request: HistoricalDataRequest) -> list:
         """ request historical data """
+        print("sddddddddddddddddd")
         logger.info(f"Requesting historical data {request}")
         success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
         if not success:

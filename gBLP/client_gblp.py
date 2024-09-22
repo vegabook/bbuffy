@@ -270,8 +270,8 @@ def syncmain():
 
     # Request historical data
     hist = mycess.historicalDataRequest(
-        ["AAPL US Equity", "IBM US Equity"],
-        ["PX_LAST", "PX_BID", "PX_ASK", "CUR_MKT_CAP"],
+        ["RNO FP Equity", "MSFT US Equity"],
+        ["PX_LAST", "CUR_MKT_CAP"],
         dt.datetime(2023, 11, 28),
         dt.datetime(2023, 11, 30)
     )

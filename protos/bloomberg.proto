@@ -27,7 +27,6 @@ service SessionsManager {
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
-  //rpc heartbeat (Session) returns (Session) {}
   //rpc intradayTickRequest. maybe "tick" or "gblpTick"
   //rpc intradayBarRequest maybe "bar"
   //rpc historicalDataRequest "daily"
@@ -83,7 +82,6 @@ message Session {
   repeated string services = 2;
   SubscriptionList subscriptionList = 3;
   bool alive = 4;
-  string status = 5;
 }
 
 /////////////// Historical data //////////////////

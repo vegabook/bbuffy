@@ -111,7 +111,6 @@ class EventHandler(object):
             # something else --->
             else:
                 logger.warning(f"Unknown message type {msgtype}")
-                breakpoint()
 
     def processMiscEvents(self, event):
         for msg in event:
