@@ -28,13 +28,13 @@
         default = pkgs.mkShell {
           # The Nix packages provided in the environment
           packages = with pkgs; [
-            python311
-            python311Packages.grpcio
-            python311Packages.grpcio-tools
-            python311Packages.ipython
-            python311Packages.colorama
-            python311Packages.certifi
-            python311Packages.cryptography
+            python312
+            python312Packages.grpcio
+            python312Packages.grpcio-tools
+            python312Packages.ipython
+            python312Packages.colorama
+            python312Packages.certifi
+            python312Packages.cryptography
             grpc-tools
             openssl_3_3
             certstrap
