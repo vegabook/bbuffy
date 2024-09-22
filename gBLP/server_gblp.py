@@ -222,7 +222,7 @@ class SessionRunner(object):
         self.partialAccumulator = defaultdict(list)
         self.alive = False
         self.session = None # must SessionRunner.open() one first
-        self.subscriptionList = blpapi.SubscriptionList()
+        self.subscriptionList = SubscriptionList() # grpc subscription list not bloomberg
         self.servicesAvail = {"Subscribe": "//blp/mktdata",
                               "UnSubscribe": "//blp/mktdata",
                               "BarSubscribe": "//blp/mktbar",
@@ -241,7 +241,6 @@ class SessionRunner(object):
                               "CategorizedFieldSearchRequest": "//blp/apiflds",
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
-        self.subscriptionList = SubscriptionList()
         self.subq = queue.Queue()
 
 
@@ -345,27 +344,44 @@ class SessionRunner(object):
 
     # ------------ subscriptions -------------------
 
-    async def subscribe(self, session: Session):
+    async def subscribe(self, gsession: Session):
+        """ subscribe to a list of topics """
+        
         # make sure the service is open
         success, service = self._getService("Subscribe")
         if not success:
             return self.grpcRepresentation()
         # create the subscription list
-        subs = []
+        ntl = [x.name for x in gsession.subscriptionList.topics] # existing topics
+        etl= [x.name for x in self.subscriptionList.topics] # new topics
+        # find the difference
+        difftl = list(set(ntl) - set(etl)) # new topics to subscribe to
+        if not difftl:
+            logger.info("No new topics to subscribe to")
+            return self.grpcRepresentation()
+        logger.info(f"Subscribing to {difftl}")
         bbgsublist = blpapi.SubscriptionList()
-        for topic in session.subscriptionList.topics:
-            topicTypeName = Topic.topicType.Name(topic.type)
-            substring = f"{service}/{topicTypeName}/{topic.name}"
-            if topic.fields == []:
-                fields = ["LAST_PRICE"]
-            if topic.interval is None:
-                intervalstr = "interval=1"
-            else:
-                intervalstr = f"interval={int(topic.interval)}"
-            cid = blpapi.CorrelationId(topic.name)
-            bbgsublist.add(substring, topic.fields, intervalstr, cid)
-
+        for topic in gsession.subscriptionList.topics:
+            if topic.name in difftl:
+                topicTypeName = Topic.topicType.Name(topic.type) # SEDOL1/TICKER/CUSIP etc
+                substring = f"{service}/{topicTypeName}/{topic.name}"
+                if topic.fields == []:
+                    fields = ["LAST_PRICE"]
+                if topic.interval is None:
+                    intervalstr = "interval=2"
+                else:
+                    intervalstr = f"interval={int(topic.interval)}"
+                cid = blpapi.CorrelationId(topic.name)
+                bbgsublist.add(substring, topic.fields, intervalstr, cid)
+                self.subscriptionList.topics.append(topic)
+        # extend the subscription list
         self.session.subscribe(bbgsublist)
+        return self.grpcRepresentation()
+
+
+    async def unsubscribe(self, gsession: Session):
+        print(f"unsubcribing TODO {gsession}")
+
             
 
     async def _sendInfo(self, command, bbgRequest):
@@ -405,7 +421,7 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.ALREADY_EXISTS, "Session already exists")
 
     async def closeSession(self, gsession: Session, context: grpc.aio.ServicerContext) -> Session:
-        logging.info("Serving closeSession session %s", session)
+        logging.info("Serving closeSession session %s", gsession)
         session = self.sessions.get(gsession.name)
         if session:
             grpcRepresentation = await self.sessions[gsession.name].close()
@@ -429,45 +445,41 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
 
+    async def subscribe(self, gsession: Session, context: grpc.aio.ServicerContext) -> Session:
+        session = self.sessions.get(gsession.name)
+        if session:
+            if not session.alive:
+                context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
+            await session.subscribe(gsession)
+            return session.grpcRepresentation()
+        else:
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
-    async def subscribeStream(self, request_iterator, context: grpc.aio.ServicerContext):
-        sessnm = None
-        done = False
 
-        # Define a coroutine to handle incoming messages
-        async def handle_messages():
-            nonlocal sessnm, done
-            try:
-                async for rsession in request_iterator:
-                    print(Fore.GREEN, rsession, Style.RESET_ALL)
-                    if sessnm is None:
-                        sessnm = rsession.name
-                        print(Fore.YELLOW, f"Session is {sessnm}", Style.RESET_ALL)
-                        session = self.sessions.get(sessnm)
-                        if not session:
-                            await context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
-                    else:
-                        if rsession.name != sessnm:
-                            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Session name mismatch")
-                    # Process the subscription request
-                    await session.subscribe(rsession)
-            except grpc.aio._call.AioRpcError as e:
-                print(Fore.RED, f"gRPC Error: {e}", Style.RESET_ALL)
-            except Exception as e:
-                print(Fore.RED, f"Unexpected error: {e}", Style.RESET_ALL)
-            finally:
-                done = True
+    async def unsubscribe(self, gsession: Session, context: grpc.aio.ServicerContext) -> Session:
+        session = self.sessions.get(gsession.name)
+        if session:
+            if not session.alive:
+                context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
+            await session.unsubscribe(gsession)
+            return session.grpcRepresentation()
+        else:
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
-        # Create the background task
-        message_task = asyncio.create_task(handle_messages())
+
+
+    async def subscriptionStream(self, gsession: Session, context: grpc.aio.ServicerContext): 
+        session = self.sessions.get(gsession.name)
+        if not session:
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
+        if not session.alive:
+            context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
 
         try:
-            while sessnm is None:
-                await asyncio.sleep(1)
-                print("Waiting for session to be set")
-            while not done:
+            while session.alive:
                 # Get messages from the session's queue
-                msg = self.sessions[sessnm].subq.get()
+                msg = session.subq.get()
+                print(msg)
                 if msg:
                     print(Fore.MAGENTA, msg, Style.RESET_ALL)
                     response = buildSubscriptionDataResponse(msg)

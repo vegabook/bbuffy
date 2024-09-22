@@ -126,10 +126,20 @@ class SessionsManagerStub(object):
                 request_serializer=bloomberg__pb2.SessionOptions.SerializeToString,
                 response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
-        self.subscribeStream = channel.stream_stream(
-                '/bloomberg.SessionsManager/subscribeStream',
+        self.subscriptionStream = channel.unary_stream(
+                '/bloomberg.SessionsManager/subscriptionStream',
                 request_serializer=bloomberg__pb2.Session.SerializeToString,
                 response_deserializer=bloomberg__pb2.SubscriptionDataResponse.FromString,
+                _registered_method=True)
+        self.subscribe = channel.unary_unary(
+                '/bloomberg.SessionsManager/subscribe',
+                request_serializer=bloomberg__pb2.Session.SerializeToString,
+                response_deserializer=bloomberg__pb2.Session.FromString,
+                _registered_method=True)
+        self.unsubscribe = channel.unary_unary(
+                '/bloomberg.SessionsManager/unsubscribe',
+                request_serializer=bloomberg__pb2.Session.SerializeToString,
+                response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
         self.sessionInfo = channel.unary_unary(
                 '/bloomberg.SessionsManager/sessionInfo',
@@ -145,6 +155,11 @@ class SessionsManagerStub(object):
                 '/bloomberg.SessionsManager/historicalDataRequest',
                 request_serializer=bloomberg__pb2.HistoricalDataRequest.SerializeToString,
                 response_deserializer=bloomberg__pb2.HistoricalDataResponse.FromString,
+                _registered_method=True)
+        self.heartbeat = channel.unary_unary(
+                '/bloomberg.SessionsManager/heartbeat',
+                request_serializer=bloomberg__pb2.Session.SerializeToString,
+                response_deserializer=bloomberg__pb2.Session.FromString,
                 _registered_method=True)
 
 
@@ -164,7 +179,19 @@ class SessionsManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def subscribeStream(self, request_iterator, context):
+    def subscriptionStream(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def subscribe(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def unsubscribe(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -188,6 +215,12 @@ class SessionsManagerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def heartbeat(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_SessionsManagerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -201,10 +234,20 @@ def add_SessionsManagerServicer_to_server(servicer, server):
                     request_deserializer=bloomberg__pb2.SessionOptions.FromString,
                     response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
-            'subscribeStream': grpc.stream_stream_rpc_method_handler(
-                    servicer.subscribeStream,
+            'subscriptionStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.subscriptionStream,
                     request_deserializer=bloomberg__pb2.Session.FromString,
                     response_serializer=bloomberg__pb2.SubscriptionDataResponse.SerializeToString,
+            ),
+            'subscribe': grpc.unary_unary_rpc_method_handler(
+                    servicer.subscribe,
+                    request_deserializer=bloomberg__pb2.Session.FromString,
+                    response_serializer=bloomberg__pb2.Session.SerializeToString,
+            ),
+            'unsubscribe': grpc.unary_unary_rpc_method_handler(
+                    servicer.unsubscribe,
+                    request_deserializer=bloomberg__pb2.Session.FromString,
+                    response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
             'sessionInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.sessionInfo,
@@ -220,6 +263,11 @@ def add_SessionsManagerServicer_to_server(servicer, server):
                     servicer.historicalDataRequest,
                     request_deserializer=bloomberg__pb2.HistoricalDataRequest.FromString,
                     response_serializer=bloomberg__pb2.HistoricalDataResponse.SerializeToString,
+            ),
+            'heartbeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.heartbeat,
+                    request_deserializer=bloomberg__pb2.Session.FromString,
+                    response_serializer=bloomberg__pb2.Session.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -288,7 +336,7 @@ class SessionsManager(object):
             _registered_method=True)
 
     @staticmethod
-    def subscribeStream(request_iterator,
+    def subscriptionStream(request,
             target,
             options=(),
             channel_credentials=None,
@@ -298,12 +346,66 @@ class SessionsManager(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.stream_stream(
-            request_iterator,
+        return grpc.experimental.unary_stream(
+            request,
             target,
-            '/bloomberg.SessionsManager/subscribeStream',
+            '/bloomberg.SessionsManager/subscriptionStream',
             bloomberg__pb2.Session.SerializeToString,
             bloomberg__pb2.SubscriptionDataResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def subscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.SessionsManager/subscribe',
+            bloomberg__pb2.Session.SerializeToString,
+            bloomberg__pb2.Session.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def unsubscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.SessionsManager/unsubscribe',
+            bloomberg__pb2.Session.SerializeToString,
+            bloomberg__pb2.Session.FromString,
             options,
             channel_credentials,
             insecure,
@@ -385,6 +487,33 @@ class SessionsManager(object):
             '/bloomberg.SessionsManager/historicalDataRequest',
             bloomberg__pb2.HistoricalDataRequest.SerializeToString,
             bloomberg__pb2.HistoricalDataResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def heartbeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/bloomberg.SessionsManager/heartbeat',
+            bloomberg__pb2.Session.SerializeToString,
+            bloomberg__pb2.Session.FromString,
             options,
             channel_credentials,
             insecure,

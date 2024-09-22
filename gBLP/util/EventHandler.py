@@ -42,16 +42,23 @@ class EventHandler(object):
             pymsg = msg.toPy()
             cid = msg.correlationId().value()
             if msg.messageType() == blpapi.Names.SUBSCRIPTION_FAILURE:
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
+                sendmsg = (RESP_STATUS, {"topic": cid, "validated": False})
+                idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
+                self.parent.subscriptionList.topics[idx].validated = False
+                # TODO parent must send a status to the client on this
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_TERMINATED:
-                stopevent.set() # DEBUG
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
+                sendmsg = (RESP_STATUS, {"topic": cid, "terminated": True})
+                idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
+                self.parent.subscriptionList.topics[idx].terminated = True
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_STARTED:
-                correl = msg.correlationId().value()
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
+                sendmsg = (RESP_STATUS, {"topic": cid, "validated": True})
+                idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
+                self.parent.subscriptionList.topics[idx].validated = True
             else:
-                sendmsg = (RESP_STATUS, (str(msg.messageType()), cid, pymsg))
-            #self.parent.correlators[cid]["queue"].put(sendmsg)
+                # unhandled message types
+                sendmsg = None
+            if sendmsg:
+                self.parent.subq.put(sendmsg)
 
     def searchMsg(self, msg, fields):
         return [{"field": field, "value": msg[field]} 
@@ -130,7 +137,6 @@ class EventHandler(object):
                 case blpapi.Event.SUBSCRIPTION_DATA:
                     self.processSubscriptionDataEvent(event)
                 case blpapi.Event.SUBSCRIPTION_STATUS:
-                    print(Fore.YELLOW + "Subscription status", Style.RESET_ALL)
                     self.processSubscriptionStatus(event)
                 case _:
                     self.processMiscEvents(event)

@@ -30,7 +30,7 @@ import getpass
 import logging
 from colorama import Fore, Back, Style, init as colinit; colinit()
 import IPython
-from Queue import Queue
+from queue import Queue
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -64,30 +64,7 @@ class Cession:
         self.grpckeyport = grpckeyport
         self.defaultInterval = defaultInterval
         self.serverEventQueueSize = serverEventQueueSize
-        self.sessgen = None 
-        self.subReqQ = Queue()
-
-
-    def open(self):
-        # Start the event loop in a new thread
-        self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self.start_loop, args=(self.loop,), daemon=True)
-        self.thread.start()
-        # Run asynchronous initialization in the event loop
-        self.run_async(self.async_init())
-
-    def start_loop(self, loop):
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
-
-    def run_async(self, coro):
-        """Schedules a coroutine to be run on the event loop."""
-        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
-        return future.result()  # Waits until the coroutine is done and returns the result
-
-    def run_async_nowait(self, coro):
-        """Schedules a coroutine to be run on the event loop without waiting."""
-        return asyncio.run_coroutine_threadsafe(coro, self.loop)
+        self.alive = False
 
     def makeName(self, length=7):
         """Make a dummy name if none provided."""
@@ -98,9 +75,32 @@ class Cession:
                        for i in range(length)) + ''.join(random.choice(digits) for i in range(2))
         return word
 
+    def open(self):
+        # Start the event loop in a new thread
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self.start_loop, args=(self.loop,), daemon=True)
+        self.thread.start()
+        # Run asynchronous initialization in the event loop
+        self.run_async(self.async_init())
+        self.run_async_nowait(self.subscriptionsStream())
+        self.alive = True
+
+    def start_loop(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    def run_async(self, coro):
+        """Schedules a coroutine to be run on the event loop."""
+        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        return future.result()  # Waits until the coroutine is done and returns the result
+
     async def async_init(self):
         await self.connect()
         await self.openSession()
+
+    def run_async_nowait(self, coro):
+        """Schedules a coroutine to be run on the event loop without waiting."""
+        return asyncio.run_coroutine_threadsafe(coro, self.loop)
 
     async def makeCerts(self):
         """Make certificates if they do not exist."""
@@ -171,22 +171,21 @@ class Cession:
             interval=self.defaultInterval,
             maxEventQueueSize=self.serverEventQueueSize
         )
-        session = await stub.openSession(sessionOptions)
-        logger.info(f"Opened {self.name} session: {session}")
+        gsession = await stub.openSession(sessionOptions)
+        logger.info(f"Opened {self.name} session: {gsession}")
         self.stub = stub  # Stub for all the gRPC calls
-        self.session = session
+        gsession.subscriptionList.CopyFrom(bloomberg_pb2.SubscriptionList())
+        self.gsession = gsession
 
     async def closeSession(self):
-        closedSession = await self.stub.closeSession(self.session)
+        closedSession = await self.stub.closeSession(self.gsession)
         logger.info(f"Closed session: {closedSession}")
         await self.channel.close()
 
     def close(self):
         self.run_async(self.closeSession())
-        print(1)
         # Stop the event loop and thread
         self.loop.call_soon_threadsafe(self.loop.stop())
-        print(2)
         self.thread.join()
 
     def historicalDataRequest(self, 
@@ -202,7 +201,7 @@ class Cession:
         est = protoTimestamp()
         est.FromDatetime(end)
         hreq = bloomberg_pb2.HistoricalDataRequest(
-            session=self.session,
+            session=self.gsession,
             topics=topics,
             fields=fields,
             start=sst,
@@ -212,47 +211,53 @@ class Cession:
         data = await self.stub.historicalDataRequest(hreq)
         return data
 
-    async def _sub_session_generator(self):
-        # contantly wait for something to arrive in subReqQ
-        while True:
-            sub = self.subReqQ.get()
-            if sub is None:
-                break
-            self.session.subscriptionList.CopyFrom(sub)
-            yield self.session
+
+    def subscribe(self, topics, 
+                  fields=["LAST_PRICE"],
+                  type="TICKER",
+                  interval=2):
+        """
+        Subscribe to topics by scheduling the async_subscribe coroutine
+        in the event loop and waiting for its completion.
+        """
+        return self.run_async(
+            self.async_subscribe(topics, fields, type, interval)
+        )
+
+    async def async_subscribe(self, topics, 
+                              fields=["LAST_PRICE"],
+                              type="TICKER",
+                              interval=2):
+        """
+        Asynchronous method to handle the subscribe gRPC call via the thread
+        """
         sub = bloomberg_pb2.SubscriptionList(
-            topics = [bloomberg_pb2.Topic(name="XBTUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
-                                          type = "TICKER", interval = 2)])
-    
-        print(f"Subscribing to topics: {sub}")
-        self.session.subscriptionList.CopyFrom(sub)
-        yield self.session 
-        
-                                            
-
-        sub = bloomberg_pb2.SubscriptionList(
-            topics = [bloomberg_pb2.Topic(name="XETUSD Curncy", fields=["LAST_PRICE", "BID", "ASK"],
-                                          type = "TICKER", interval = 2)])
-    
-        print(f"Subscribing to topics: {sub}")
-        self.session.subscriptionList.CopyFrom(sub)
-        yield self.session
-        while True:
-            await asyncio.sleep(1)
+            topics=[
+                bloomberg_pb2.Topic(
+                    name=x, 
+                    fields=fields, 
+                    type=type, 
+                    interval=interval
+                ) for x in topics
+            ]
+        )
+        self.gsession.subscriptionList.CopyFrom(sub)
+        # Perform the asynchronous subscribe call
+        self.gsession = await self.stub.subscribe(self.gsession)
+        logger.info(f"Subscribed to topics: {topics}")
 
 
-    async def _async_subscribe(self):
+
+    def unsubscribe(self, topics):
+        pass
+
+    async def subscriptionsStream(self):
         print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
-        try:
-            async for response in self.stub.subscribeStream(self._sub_session_generator()):
-                print(Fore.MAGENTA, f"Received: {response}", Style.RESET_ALL)
-        except asyncio.CancelledError:
-            print(Fore.YELLOW, "Subscription task cancelled.", Style.RESET_ALL)
-        except Exception as e:
-            logger.error(f"Subscription error: {e}")
-
-
-    def subscribe(self):
+        async for response in self.stub.subscriptionStream(self.gsession):
+            print(Fore.MAGENTA, f"Received: {response}", Style.RESET_ALL)
+            if not self.alive:
+                break
+            
 
 
 def syncmain():
@@ -267,13 +272,10 @@ def syncmain():
     hist = mycess.historicalDataRequest(
         ["AAPL US Equity", "IBM US Equity"],
         ["PX_LAST", "PX_BID", "PX_ASK", "CUR_MKT_CAP"],
-        dt.datetime(2023, 11, 27),
+        dt.datetime(2023, 11, 28),
         dt.datetime(2023, 11, 30)
     )
     print(hist)
-
-    # Schedule the async_subscribe coroutine without awaiting
-    mycess.subscription_task = mycess.run_async_nowait(mycess._async_subscribe())
 
     # Enter IPython shell
     IPython.embed()

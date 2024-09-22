@@ -21,10 +21,13 @@ service SessionsManager {
 
   rpc getDefaultOptions (google.protobuf.Empty) returns (SessionOptions) {}
   rpc openSession (SessionOptions) returns (Session) {}
-  rpc subscribeStream (stream Session) returns (stream SubscriptionDataResponse) {} 
+  rpc subscriptionStream (Session) returns (stream SubscriptionDataResponse) {} 
+  rpc subscribe(Session) returns (Session) {}
+  rpc unsubscribe(Session) returns (Session) {}
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
+  //rpc heartbeat (Session) returns (Session) {}
   //rpc intradayTickRequest. maybe "tick" or "gblpTick"
   //rpc intradayBarRequest maybe "bar"
   //rpc historicalDataRequest "daily"
@@ -53,6 +56,8 @@ message Topic {
   topicType type = 2; 
   repeated string fields = 3;
   int32 interval = 4;
+  bool validated = 5;
+  bool terminated = 6;
 }
 
 message SubscriptionList {
@@ -63,6 +68,8 @@ message SubscriptionDataResponse {
   string topic = 1;                          
   google.protobuf.Timestamp timestamp = 2;   
   repeated SubFieldData fields = 3;
+  bool validated = 4;
+  bool terminated = 5;
 }
 
 message SubFieldData {
@@ -76,6 +83,7 @@ message Session {
   repeated string services = 2;
   SubscriptionList subscriptionList = 3;
   bool alive = 4;
+  string status = 5;
 }
 
 /////////////// Historical data //////////////////

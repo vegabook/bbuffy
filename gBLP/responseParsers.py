@@ -78,6 +78,10 @@ def buildSubscriptionDataResponse(data):
     subdata = data[1]
     response.timestamp.FromDatetime(subdata['timestamp'])
     response.topic = subdata['topic']
+    if subdata.get("validated"):
+        response.validated = subdata["validated"]
+    if subdata.get("terminated"):
+        response.terminated = subdata["terminated"]
     for price in subdata['prices']:
         success = True
         fieldDataMsg = SubFieldData()
