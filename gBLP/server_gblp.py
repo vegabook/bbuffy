@@ -300,7 +300,9 @@ class SessionRunner(object):
             logger.info("Session started.")
             self.alive = True
         # return all the details over gRPC
-        return self.grpcRepresentation()
+        grpcrep = self.grpcRepresentation()
+        logger.debug(f"Session opened {grpcrep}")
+        return grpcrep
 
     async def close(self):
         """ close the session """

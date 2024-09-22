@@ -259,7 +259,6 @@ class Cession:
                 break
             
 
-
 def syncmain():
     mycess = Cession(
         grpchost=args.grpchost,
