@@ -30,7 +30,7 @@ import getpass
 import logging
 from colorama import Fore, Back, Style, init as colinit; colinit()
 import IPython
-from Queue import Queue
+from queue import Queue
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -251,8 +251,6 @@ class Cession:
         except Exception as e:
             logger.error(f"Subscription error: {e}")
 
-
-    def subscribe(self):
 
 
 def syncmain():
