@@ -196,9 +196,15 @@ async def serveSessions() -> None:
         require_client_auth=True,  # Require clients to provide valid certificates
     )
     sessionServer.add_secure_port(listenAddr, serverCredentials) 
-    logging.info(f"Starting session server on {listenAddr}")
+
     await sessionServer.start()
-    await sessionServer.wait_for_termination()
+    logging.info(f"Starting session server on {listenAddr}")
+    try:
+        await sessionServer.wait_for_termination()
+    except asyncio.CancelledError:
+        await sessionServer.stop(None)
+        logging.info("Session server stopped.")
+        raise # propagate
 
 
 async def keySession() -> None:
@@ -207,9 +213,15 @@ async def keySession() -> None:
     keyServer = grpc.aio.server()
     add_KeyManagerServicer_to_server(KeyManager(), keyServer)
     keyServer.add_insecure_port(keyListenAddr) # this listens without credentials
-    logging.info(f"Starting key server on {keyListenAddr}")
+
     await keyServer.start()
-    await keyServer.wait_for_termination()
+    logging.info(f"Starting key server on {keyListenAddr}")
+    try:
+        await keyServer.wait_for_termination()
+    except asyncio.CancelledError:
+        await keyServer.stop(None)
+        logging.info("Key server stopped.")
+        raise # propagate
 
 
 
@@ -473,7 +485,6 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
 
 
-
     async def subscriptionStream(self, gsession: Session, context: grpc.aio.ServicerContext): 
         session = self.sessions.get(gsession.name)
         if not session:
@@ -500,9 +511,18 @@ class SessionsManager(SessionsManagerServicer):
             return session.grpcRepresentation()
                     
 
-
 async def main():
-    await asyncio.gather(serveSessions(), keySession())
+    session_task = asyncio.create_task(serveSessions())
+    key_task = asyncio.create_task(keySession())
+    try:
+        await asyncio.gather(session_task, key_task)
+    except KeyboardInterrupt:
+        logging.info("KeyboardInterrupt received. Shutting down...")
+        session_task.cancel()
+        key_task.cancel()
+        await asyncio.gather(session_task, key_task, return_exceptions=True)
+        logging.info("Shutdown complete.")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
