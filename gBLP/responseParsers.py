@@ -75,6 +75,7 @@ def buildSubscriptionDataResponse(data):
     #'topic': 'XBTUSD Curncy', 
     #'prices': [{'field': 'LAST_PRICE', 'value': 63126.18}, {'field': 'BID', 'value': 63122.35}, {'field': 'ASK', 'value': 63130.0}]})
     response = SubscriptionDataResponse()
+    response.msgtype = data[0]
     subdata = data[1]
     response.timestamp.FromDatetime(subdata['timestamp'])
     response.topic = subdata['topic']
@@ -82,7 +83,7 @@ def buildSubscriptionDataResponse(data):
         response.validated = subdata["validated"]
     if subdata.get("terminated"):
         response.terminated = subdata["terminated"]
-    for price in subdata['prices']:
+    for price in subdata.get('prices', []):
         success = True
         fieldDataMsg = SubFieldData()
         fieldDataMsg.field = price['field']
@@ -94,11 +95,13 @@ def buildSubscriptionDataResponse(data):
             fieldDataMsg.value.bool_value = price['value']
         elif isinstance(price['value'], datetime.datetime):
             fieldDataMsg.value.number_value = price['value'].timestamp()
+        elif isinstance(price['value'], datetime.time):
+            success = False
         else:
-            logger.warning(f"Unsupported type for field '{price['field']}': {type(price['value'])}")
             success = False
         if success:
             response.fields.append(fieldDataMsg)
+
     return response
 
 

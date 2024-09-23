@@ -56,8 +56,11 @@ from util.SubscriptionOptions import \
 from util.ConnectionAndAuthOptions import \
     addConnectionAndAuthOptions, \
     createSessionOptions
-from util.EventHandler import EventHandler, RESP_INFO, RESP_REF, RESP_SUB, \
-    RESP_BAR, RESP_STATUS, RESP_ERROR, RESP_ACK
+
+from util.EventHandler import EventHandler
+
+from constants import (RESP_INFO, RESP_REF, RESP_SUB, RESP_BAR,
+        RESP_STATUS, RESP_ERROR, RESP_ACK, DEFAULT_FIELDS)
 
 from util.certMaker import get_conf_dir, make_client_certs, make_all_certs
 from cryptography.hazmat.primitives import serialization, hashes
@@ -478,26 +481,23 @@ class SessionsManager(SessionsManagerServicer):
         if not session.alive:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
 
-        try:
-            while session.alive:
-                # Get messages from the session's queue
-                msg = session.subq.get()
-                print(msg)
-                if msg:
-                    print(Fore.MAGENTA, msg, Style.RESET_ALL)
-                    response = buildSubscriptionDataResponse(msg)
-                    print(Fore.CYAN, response, Style.RESET_ALL)
-                    yield response
+        loop = asyncio.get_event_loop()
+        while session.alive:
+            # Get messages from the session's queue
+            # async get from the queue
+            msg = await loop.run_in_executor(None, session.subq.get)
+            if msg:
+                response = buildSubscriptionDataResponse(msg)
+                yield response
+
+
+    async def sessionInfo(self, gsession, context):
+        session = self.sessions.get(gsession.name)
+        if not session:
+            context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
+        else:
+            return session.grpcRepresentation()
                     
-        except asyncio.CancelledError:
-            print(Fore.RED, "Stream handling was cancelled.", Style.RESET_ALL)
-        finally:
-            # Ensure the message task is cancelled
-            message_task.cancel()
-            try:
-                await message_task
-            except asyncio.CancelledError:
-                pass
 
 
 async def main():

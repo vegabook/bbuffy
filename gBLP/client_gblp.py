@@ -32,6 +32,9 @@ from colorama import Fore, Back, Style, init as colinit; colinit()
 import IPython
 from queue import Queue
 
+from constants import (RESP_INFO, RESP_REF, RESP_SUB, RESP_BAR,
+        RESP_STATUS, RESP_ERROR, RESP_ACK, DEFAULT_FIELDS)
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
@@ -46,6 +49,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 
 class Cession:
     def __init__(self, 
@@ -216,10 +220,7 @@ class Cession:
                   fields=["LAST_PRICE"],
                   type="TICKER",
                   interval=2):
-        """
-        Subscribe to topics by scheduling the async_subscribe coroutine
-        in the event loop and waiting for its completion.
-        """
+        """ synchronous subscribe method """
         return self.run_async(
             self.async_subscribe(topics, fields, type, interval)
         )
@@ -228,9 +229,6 @@ class Cession:
                               fields=["LAST_PRICE"],
                               type="TICKER",
                               interval=2):
-        """
-        Asynchronous method to handle the subscribe gRPC call via the thread
-        """
         sub = bloomberg_pb2.SubscriptionList(
             topics=[
                 bloomberg_pb2.Topic(
@@ -247,16 +245,29 @@ class Cession:
         logger.info(f"Subscribed to topics: {topics}")
 
 
-
     def unsubscribe(self, topics):
         pass
 
     async def subscriptionsStream(self):
         print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
         async for response in self.stub.subscriptionStream(self.gsession):
-            print(Fore.MAGENTA, f"Received: {response}", Style.RESET_ALL)
+            if response.msgtype == RESP_STATUS:
+                print(Fore.GREEN, f"Received: {response}", Style.RESET_ALL)
+            else:   
+                print(Fore.MAGENTA, Style.BRIGHT, f"Received: {response}", Style.RESET_ALL)
             if not self.alive:
                 break
+
+
+    async def async_sessionInfo(self):
+        info = await self.stub.sessionInfo(self.gsession)
+        logger.info(f"Session info: {info}")
+        return info
+    
+    def sessionInfo(self):
+        return self.run_async(self.async_sessionInfo()) 
+
+
             
 
 def syncmain():

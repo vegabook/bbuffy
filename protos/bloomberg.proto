@@ -64,11 +64,13 @@ message SubscriptionList {
 }
 
 message SubscriptionDataResponse {
-  string topic = 1;                          
-  google.protobuf.Timestamp timestamp = 2;   
-  repeated SubFieldData fields = 3;
-  bool validated = 4;
-  bool terminated = 5;
+  string msgtype = 1;
+  string topic = 2;                          
+  google.protobuf.Timestamp timestamp = 3;   
+  repeated SubFieldData fields = 4;
+  bool validated = 5;
+  bool terminated = 6;
+
 }
 
 message SubFieldData {

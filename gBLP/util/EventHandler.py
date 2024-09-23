@@ -9,15 +9,8 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 from colorama import Fore, Back, Style, init as colinit; colinit()
 
-
-RESP_INFO = "info"
-RESP_REF = "refdata"
-RESP_SUB = "subdata"
-RESP_BAR = "bardata"
-RESP_STATUS = "status"
-RESP_ERROR = "error"
-RESP_ACK = "ack"
-DEFAULT_FIELDS = ["LAST_PRICE", "BLOOMBERG_SEND_TIME_RT", "BID", "ASK"]
+from constants import (RESP_INFO, RESP_REF, RESP_SUB, RESP_BAR,
+        RESP_STATUS, RESP_ERROR, RESP_ACK, DEFAULT_FIELDS)
 
 class EventHandler(object):
 
@@ -37,21 +30,23 @@ class EventHandler(object):
             self.parent.correlators[cid]["queue"].put(sendmsg)
 
     def processSubscriptionStatus(self, event):
-        timeStamp = self.getTimeStamp()
+        timestamp = self.getTimeStamp()
+        timestampdt = dt.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+        
         for msg in event:
             pymsg = msg.toPy()
             cid = msg.correlationId().value()
             if msg.messageType() == blpapi.Names.SUBSCRIPTION_FAILURE:
-                sendmsg = (RESP_STATUS, {"topic": cid, "validated": False})
+                sendmsg = (RESP_STATUS, {"topic": cid, "timestamp": timestampdt, "validated": False})
                 idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
                 self.parent.subscriptionList.topics[idx].validated = False
                 # TODO parent must send a status to the client on this
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_TERMINATED:
-                sendmsg = (RESP_STATUS, {"topic": cid, "terminated": True})
+                sendmsg = (RESP_STATUS, {"topic": cid, "timestamp": timestampdt, "terminated": True})
                 idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
                 self.parent.subscriptionList.topics[idx].terminated = True
             elif msg.messageType() == blpapi.Names.SUBSCRIPTION_STARTED:
-                sendmsg = (RESP_STATUS, {"topic": cid, "validated": True})
+                sendmsg = (RESP_STATUS, {"topic": cid, "timestamp": timestampdt, "validated": True})
                 idx = [x.name for x in self.parent.subscriptionList.topics].index(cid)
                 self.parent.subscriptionList.topics[idx].validated = True
             else:
