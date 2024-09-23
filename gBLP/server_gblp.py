@@ -482,13 +482,14 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
 
         loop = asyncio.get_event_loop()
-        while session.alive:
+        while self.sessions.get(gsession.name) is not None:
             # Get messages from the session's queue
             # async get from the queue
             msg = await loop.run_in_executor(None, session.subq.get)
             if msg:
                 response = buildSubscriptionDataResponse(msg)
                 yield response
+        logger.info("Subscription stream closed")
 
 
     async def sessionInfo(self, gsession, context):
