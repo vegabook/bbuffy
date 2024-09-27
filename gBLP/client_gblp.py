@@ -29,6 +29,7 @@ from util.certMaker import get_conf_dir
 import getpass
 import logging
 from colorama import Fore, Back, Style, init as colinit; colinit()
+from collections import deque, defaultdict
 import IPython
 from queue import Queue
 
@@ -38,7 +39,7 @@ from constants import (RESP_INFO, RESP_REF, RESP_SUB, RESP_BAR,
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--message', default='hello!')
-parser.add_argument('--grpchost', default='signaliser.com')
+parser.add_argument('--grpchost', default='localhost')
 parser.add_argument('--grpcport', default='50051')
 parser.add_argument('--grpckeyport', default='50052')
 parser.add_argument('--delcerts', action='store_true', default=False)
@@ -51,14 +52,17 @@ logging.basicConfig(level=logging.DEBUG,
 logger = logging.getLogger(__name__)
 
 
+
 class Cession:
-    def __init__(self, 
-                 name=None, 
+    def __init__(self,
+                 name=None,
+                 handler = None,
                  grpchost="localhost",
                  grpcport=50051,
                  grpckeyport=50052,
                  defaultInterval=5,   # seconds
-                 serverEventQueueSize=100000):
+                 serverEventQueueSize=100000,
+                 maxdDequeSize = 10000):       # max size of deques each holding one topic
         if name is None:
             self.name = self.makeName()
         else:
@@ -69,6 +73,11 @@ class Cession:
         self.defaultInterval = defaultInterval
         self.serverEventQueueSize = serverEventQueueSize
         self.alive = False
+        self.handler = handler
+        if self.handler is None:   # create a deque
+            self.subsdata = defaultdict(lambda: deque(maxlen = maxdDequeSize))
+            self.statusLog = []
+
 
     def makeName(self, length=7):
         """Make a dummy name if none provided."""
@@ -87,6 +96,7 @@ class Cession:
         # Run asynchronous initialization in the event loop
         self.run_async(self.async_init())
         self.run_async_nowait(self.subscriptionsStream())
+        logger.info("Subscription stream started.")
         self.alive = True
 
     def start_loop(self, loop):
@@ -248,15 +258,20 @@ class Cession:
     def unsubscribe(self, topics):
         pass
 
-    async def subscriptionsStream(self):
-        print(Fore.CYAN, "Starting subscription", Style.RESET_ALL)
+    async def subscriptionsStream(self, handler = None):
         async for response in self.stub.subscriptionStream(self.gsession):
-            if response.msgtype == RESP_STATUS:
-                print(Fore.GREEN, f"Received: {response}", Style.RESET_ALL)
-            else:   
-                print(Fore.MAGENTA, Style.BRIGHT, f"Received: {response}", Style.RESET_ALL)
-            if not self.alive:
-                break
+            try:
+                if self.handler:
+                    self.run_async(self.handler.handle(response))
+                else:
+                    if response.msgtype in (RESP_SUB, RESP_BAR):
+                        self.subsdata[response.topic].append(response)
+                    elif response.msgtype in (RESP_STATUS, RESP_ERROR):
+                        self.statusLog.append(response)
+                    else:
+                        pass
+            except Exception as e:
+                print(f"Error: {e}")
 
 
     async def async_sessionInfo(self):
@@ -268,18 +283,43 @@ class Cession:
         return self.run_async(self.async_sessionInfo()) 
 
 
-            
+
+
+class Handler():
+    """ Optional handler class to handle subscription responses """
+
+    def __init__(self, follow_handler = None):
+        # this will store by topic 
+        self.follow_handler = follow_handler # can chain more handlers here
+    
+    async def handle(self, response):
+        # this function must be present in any handler
+        try:
+            if response.msgtype in (RESP_SUB, RESP_BAR):
+                print(Fore.GREEN, f"Received: {response}", Style.RESET_ALL)
+            else:
+                print(Fore.MAGENTA, Style.BRIGHT, f"Received: {response}", Style.RESET_ALL)
+            if self.follow_handler:
+                self.follow_handler.handle(response)
+        except Exception as e:
+            print(f"Error: {e}")
+
+
 
 def syncmain():
-    mycess = Cession(
+
+    print_handler = Handler()
+
+    cess = Cession(
         grpchost=args.grpchost,
         grpcport=args.grpcport,
         grpckeyport=args.grpckeyport
     )
-    mycess.open()
+    #handler=print_handler # TODO NOT WORKING
+    cess.open()
 
     # Request historical data
-    hist = mycess.historicalDataRequest(
+    hist = cess.historicalDataRequest(
         ["RNO FP Equity", "MSFT US Equity"],
         ["PX_LAST", "CUR_MKT_CAP"],
         dt.datetime(2023, 11, 28),
@@ -291,7 +331,7 @@ def syncmain():
     IPython.embed()
 
     # After exiting IPython, close the session
-    mycess.close()
+    cess.close()
 
 if __name__ == "__main__":
     # TODO move certs into another class
