@@ -64,7 +64,7 @@ class Cession:
                  serverEventQueueSize=100000,
                  maxdDequeSize = 10000):       # max size of deques each holding one topic
         if name is None:
-            self.name = self.makeName()
+            self.name = self.makeName(6, 3)
         else:
             self.name = name
         self.grpchost = grpchost
@@ -79,13 +79,14 @@ class Cession:
             self.statusLog = []
 
 
-    def makeName(self, length=7):
+    def makeName(self, alphaLength, digitLength):
         """Make a dummy name if none provided."""
         consonants = "bcdfghjklmnpqrstvwxyz"
         vowels = "aeiou"
         digits = "0123456789"
         word = ''.join(random.choice(consonants if i % 2 == 0 else vowels) 
-                       for i in range(length)) + ''.join(random.choice(digits) for i in range(2))
+                       for i in range(alphaLength)) + \
+                       ''.join(random.choice(digits) for i in range(digitLength))
         return word
 
     def open(self):
@@ -303,7 +304,6 @@ class Handler():
                 self.follow_handler.handle(response)
         except Exception as e:
             print(f"Error: {e}")
-
 
 
 def syncmain():
