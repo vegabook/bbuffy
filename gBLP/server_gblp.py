@@ -21,6 +21,10 @@ import random
 from collections import defaultdict
 import json
 import datetime as dt
+import sys # for hard exit
+import threading
+import signal
+from functools import partial
 
 import queue
 import blpapi
@@ -68,6 +72,9 @@ from cryptography.hazmat.primitives import serialization, hashes
 from colorama import Fore, Back, Style, init as colinit
 colinit()
 
+done = threading.Event() # signal to stop the subscription stream loop
+
+# logging
 
 import logging
 logging.basicConfig(level=logging.DEBUG,
@@ -162,11 +169,11 @@ class KeyManager(KeyManagerServicer):
             context.abort(grpc.StatusCode.PERMISSION_DENIED, "Request denied")
 
 
-async def serveSessions() -> None:
+async def serveSessions(grpcServer) -> None:
 
     listenAddr = f"{globalOptions.grpchost}:{globalOptions.grpcport}"
-    sessionServer = grpc.aio.server()
-    add_SessionsManagerServicer_to_server(SessionsManager(), sessionServer)
+    sessionsManager = SessionsManager()
+    add_SessionsManagerServicer_to_server(sessionsManager, grpcServer)
 
     # first check if the certs are there
     confdir = get_conf_dir()
@@ -195,33 +202,26 @@ async def serveSessions() -> None:
         root_certificates=CAcert,
         require_client_auth=True,  # Require clients to provide valid certificates
     )
-    sessionServer.add_secure_port(listenAddr, serverCredentials) 
+    grpcServer.add_secure_port(listenAddr, serverCredentials) 
 
-    await sessionServer.start()
+    await grpcServer.start()
     logging.info(f"Starting session server on {listenAddr}")
-    try:
-        await sessionServer.wait_for_termination()
-    except asyncio.CancelledError:
-        await sessionServer.stop(None)
-        logging.info("Session server stopped.")
-        raise # propagate
+    await grpcServer.wait_for_termination()
+    await sessionsManager.closeAllSessions()
+    logging.info("Session server stopped.")
+    #raise # propagate
 
 
-async def keySession() -> None:
+async def keySession(keyServer) -> None:
 
     keyListenAddr = f"{globalOptions.grpchost}:{globalOptions.grpckeyport}"
-    keyServer = grpc.aio.server()
     add_KeyManagerServicer_to_server(KeyManager(), keyServer)
     keyServer.add_insecure_port(keyListenAddr) # this listens without credentials
 
     await keyServer.start()
     logging.info(f"Starting key server on {keyListenAddr}")
-    try:
-        await keyServer.wait_for_termination()
-    except asyncio.CancelledError:
-        await keyServer.stop(None)
-        logging.info("Key server stopped.")
-        raise # propagate
+    await keyServer.wait_for_termination()
+    logging.info("Key server stopped.")
 
 
 
@@ -257,6 +257,8 @@ class SessionRunner(object):
                               "studyRequest": "//blp/tasvc",
                               "SnapshotRequest": "//blp/mktlist"}
         self.subq = queue.Queue()
+        self.numDispatcherThreads = 1 # if > 1 then threaded dispatchers will be created
+
 
 
     def _getService(self, serviceReq: str) -> bool:
@@ -291,7 +293,6 @@ class SessionRunner(object):
                        services=self.servicesAvail.keys(), 
                        alive=self.alive, 
                        subscriptionList=self.subscriptionList)
-                       # dummy subscription list TODO this should be real
 
     async def open(self):
         """ open the session and associated services """
@@ -299,15 +300,17 @@ class SessionRunner(object):
         sessionOptions = createSessionOptions(globalOptions) 
         sessionOptions.setMaxEventQueueSize(self.maxEventQueueSize)
         sessionOptions.setSessionName(self.name)
-        # mulithreaded dispather. not strictly needed
-        self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=2) # threaded dispatcher
-        self.eventDispatcher.start()
-        # queue for our event handler to return messages back te this class
         handler = EventHandler(parent = self)
-        # now actually open the session
-        self.session = blpapi.Session(sessionOptions, 
-                                      eventHandler=handler.processEvent,
-                                      eventDispatcher=self.eventDispatcher)
+        if self.numDispatcherThreads > 1:
+            self.eventDispatcher = blpapi.EventDispatcher(numDispatcherThreads=self.numDispatcherThreads) 
+            self.eventDispatcher.start()
+            self.session = blpapi.Session(sessionOptions, 
+                                          eventHandler=handler.processEvent,
+                                          eventDispatcher=self.eventDispatcher)
+        else:
+            self.session = blpapi.Session(sessionOptions, 
+                                          eventHandler=handler.processEvent)
+
         if not self.session.start():
             logger.error("Failed to start session.")
             self.alive = False
@@ -322,13 +325,14 @@ class SessionRunner(object):
     async def close(self):
         """ close the session """
         self.session.stop()
-        self.eventDispatcher.stop()
+        if self.numDispatcherThreads > 1:
+            self.eventDispatcher.stop()
         self.alive = False
+        logger.info(f"Session {self.name} closed")
         return self.grpcRepresentation()
 
     async def historicalDataRequest(self, request: HistoricalDataRequest) -> list:
         """ request historical data """
-        print("sddddddddddddddddd")
         logger.info(f"Requesting historical data {request}")
         success, bbgRequest = self._createEmptyRequest("HistoricalDataRequest")
         if not success:
@@ -400,7 +404,6 @@ class SessionRunner(object):
     async def unsubscribe(self, gsession: Session):
         print(f"unsubcribing TODO {gsession}")
 
-            
 
     async def _sendInfo(self, command, bbgRequest):
         """ sends back structure information about the request """
@@ -418,7 +421,7 @@ class SessionsManager(SessionsManagerServicer):
     # and communicates with the SessionRunner(s)
 
     def __init__(self):
-        self.sessions = dict() # the seesions
+        self.sessions = dict() # the sessions
         self.maxSessions = 7
 
     async def openSession(self, options: SessionOptions, 
@@ -493,13 +496,12 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, "Session not open")
 
         loop = asyncio.get_event_loop()
-        while self.sessions.get(gsession.name) is not None:
+        while not done.is_set():
             # Get messages from the session's queue
             # async get from the queue
             msg = await loop.run_in_executor(None, session.subq.get)
-            if msg:
-                response = buildSubscriptionDataResponse(msg)
-                yield response
+            response = buildSubscriptionDataResponse(msg)
+            yield response
         logger.info("Subscription stream closed")
 
 
@@ -509,19 +511,30 @@ class SessionsManager(SessionsManagerServicer):
             context.abort(grpc.StatusCode.NOT_FOUND, "Session not found")
         else:
             return session.grpcRepresentation()
-                    
+
+    async def closeAllSessions(self):
+        snames = list(self.sessions.keys())
+        for sname in snames:
+            session = self.sessions[sname]
+            logging.info(f"Asking server {sname} to close")
+            await session.close()
+            del self.sessions[sname]
+
 
 async def main():
-    session_task = asyncio.create_task(serveSessions())
-    key_task = asyncio.create_task(keySession())
-    try:
-        await asyncio.gather(session_task, key_task)
-    except KeyboardInterrupt:
-        logging.info("KeyboardInterrupt received. Shutting down...")
-        session_task.cancel()
-        key_task.cancel()
-        await asyncio.gather(session_task, key_task, return_exceptions=True)
-        logging.info("Shutdown complete.")
+    grpcServer = grpc.aio.server()
+    keyServer = grpc.aio.server()
+    session_task = asyncio.create_task(serveSessions(grpcServer))
+    key_task = asyncio.create_task(keySession(keyServer))
+    def on_done(signum, frame):
+        print("Exiting...")
+        loop = asyncio.get_event_loop()
+        asyncio.run_coroutine_threadsafe(grpcServer.stop(grace=1), loop)
+        asyncio.run_coroutine_threadsafe(keyServer.stop(grace=1), loop)
+        done.set()
+
+    signal.signal(signal.SIGINT, on_done) # set the handler
+    await asyncio.gather(session_task, key_task)
 
 
 if __name__ == "__main__":
