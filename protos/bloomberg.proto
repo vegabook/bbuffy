@@ -27,6 +27,7 @@ service SessionsManager {
   rpc sessionInfo (Session) returns (Session) {}
   rpc closeSession (Session) returns (Session) {}
   rpc historicalDataRequest (HistoricalDataRequest) returns (HistoricalDataResponse) {}
+  rpc shutAllSessions (google.protobuf.Empty) returns (google.protobuf.Empty) {}
   //rpc intradayTickRequest. maybe "tick" or "gblpTick"
   //rpc intradayBarRequest maybe "bar"
   //rpc historicalDataRequest "daily"
@@ -138,6 +139,19 @@ message KeyResponse {
   bytes cacert = 3;
 }
 
-///////////// simple examples //////////////////
+///////////// ping pong //////////////////
+
+message Ping
+{
+  Session session = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+message Pong
+{
+  Session session = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
 
 

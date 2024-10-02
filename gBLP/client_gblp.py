@@ -92,7 +92,7 @@ class Cession:
     def open(self):
         # Start the event loop in a new thread
         self.loop = asyncio.new_event_loop()
-        self.thread = threading.Thread(target=self.start_loop, args=(self.loop,), daemon=True)
+        self.thread = threading.Thread(target=self.start_loop, args=(self.loop,), daemon=False)
         self.thread.start()
         # Run asynchronous initialization in the event loop
         self.run_async(self.async_init())
@@ -322,6 +322,22 @@ def syncmain():
     hist = cess.historicalDataRequest(
         ["RNO FP Equity", "MSFT US Equity"],
         ["PX_LAST", "CUR_MKT_CAP"],
+        dt.datetime(2023, 11, 28),
+        dt.datetime(2023, 11, 30)
+    )
+    print(hist)
+
+    hist = cess.historicalDataRequest(
+        ["AAPL US Equity", "GOOg US Equity"],
+        ["PX_BID"],
+        dt.datetime(2023, 11, 28),
+        dt.datetime(2023, 11, 30)
+    )
+    print(hist)
+
+    hist = cess.historicalDataRequest(
+        ["R186 Govt"],
+        ["PX_ASK"],
         dt.datetime(2023, 11, 28),
         dt.datetime(2023, 11, 30)
     )

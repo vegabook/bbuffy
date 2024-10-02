@@ -25,7 +25,6 @@ import sys # for hard exit
 import threading
 import signal
 from functools import partial
-
 import queue
 import blpapi
 
@@ -69,10 +68,11 @@ from constants import (RESP_INFO, RESP_REF, RESP_SUB, RESP_BAR,
 from util.certMaker import get_conf_dir, make_client_certs, make_all_certs
 from cryptography.hazmat.primitives import serialization, hashes
 
-from colorama import Fore, Back, Style, init as colinit
-colinit()
+from rich.console import Console; console = Console()
+from rich.traceback import install; install()
 
-done = threading.Event() # signal to stop the subscription stream loop
+
+done = asyncio.Event() # signal to stop the subscription stream loop
 
 # logging
 
@@ -83,6 +83,19 @@ logger = logging.getLogger(__name__)
 
 NUMBER_OF_REPLY = 10
 
+# ----------------- thread creation tracking ----------------------
+def trace_function(frame, event, arg):
+    """Trace function that will be called for every line of code in every thread."""
+    if event == 'call':
+        console.print(f"[bold blue]Calling function: {frame.f_code.co_name} in {threading.current_thread().name}")
+    elif event == 'line':
+        console.print(f"[bold green]Line {frame.f_lineno} in {frame.f_code.co_name} in {threading.current_thread().name}")
+    elif event == 'return':
+        console.print(f"[bold red]Returning from {frame.f_code.co_name} in {threading.current_thread().name}")
+    return trace_function  # Return itself to continue tracing
+
+# Set this trace function to be used for all new threads
+threading.settrace(trace_function)
 # ----------------- util functions ----------------------
 
 def serialize_datetime(obj): 
@@ -208,7 +221,7 @@ async def serveSessions(grpcServer) -> None:
     logging.info(f"Starting session server on {listenAddr}")
     await grpcServer.wait_for_termination()
     await sessionsManager.closeAllSessions()
-    logging.info("Session server stopped.")
+    logging.info("Sessions server stopped.")
     #raise # propagate
 
 
@@ -310,7 +323,6 @@ class SessionRunner(object):
         else:
             self.session = blpapi.Session(sessionOptions, 
                                           eventHandler=handler.processEvent)
-
         if not self.session.start():
             logger.error("Failed to start session.")
             self.alive = False
@@ -406,7 +418,7 @@ class SessionRunner(object):
 
 
     async def _sendInfo(self, command, bbgRequest):
-        """ sends back structure information about the request """
+        """ sends back structure information about the request TODO THIS IS JUST COPY PASTE FROM BLXX"""
         desc = bbgRequest.asElement().elementDefinition()
         strdesc = desc.toString()
         sendmsg = (RESP_INFO, {"request_type": command, "structure": strdesc})
@@ -499,7 +511,11 @@ class SessionsManager(SessionsManagerServicer):
         while not done.is_set():
             # Get messages from the session's queue
             # async get from the queue
-            msg = await loop.run_in_executor(None, session.subq.get)
+            try:
+                msg = await loop.run_in_executor(None, session.subq.get)  
+            except asyncio.TimeoutError:
+                logger.error("Timeout while waiting for message from the queue")
+                continue  # Handle timeout by continuing or breaking, depending on your logic
             response = buildSubscriptionDataResponse(msg)
             yield response
         logger.info("Subscription stream closed")
@@ -526,15 +542,35 @@ async def main():
     keyServer = grpc.aio.server()
     session_task = asyncio.create_task(serveSessions(grpcServer))
     key_task = asyncio.create_task(keySession(keyServer))
-    def on_done(signum, frame):
-        print("Exiting...")
-        loop = asyncio.get_event_loop()
-        asyncio.run_coroutine_threadsafe(grpcServer.stop(grace=1), loop)
-        asyncio.run_coroutine_threadsafe(keyServer.stop(grace=1), loop)
-        done.set()
+    await asyncio.sleep(10)
+    logger.info("Done is being set")
+    done.set()
+    logger.info("Waiting for done...")
+    try:
+        await done.wait()
+        logger.info("done waitined for. Stopping gRPC servers...")
+        await grpcServer.stop(grace=3)
+        logger.info("gRPC server stopped.") 
+        await keyServer.stop(grace=3)
+        logger.info("Key server stopped.")
+        logger.info("Gathering asyncio gRPC task wrappers...")
+        await asyncio.gather(session_task, key_task)
+        logger.info("All tasks stopped. Exiting.")
+    except Exception as e:
+        logger.info(f"Exception in main: {e}")
+    finally:
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        print("tasks", tasks)
+        for task in tasks:
+            logger.info(f"Force cancelling task {task}")
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+    # now print all running threads
+    for th in threading.enumerate():
+        console.print(f"[bold magenta]Thread {th.name} is still running[/bold magenta]")
 
-    signal.signal(signal.SIGINT, on_done) # set the handler
-    await asyncio.gather(session_task, key_task)
+
+
 
 
 if __name__ == "__main__":
